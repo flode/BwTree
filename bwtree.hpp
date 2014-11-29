@@ -103,7 +103,7 @@ namespace BwTree {
     }
 
     template <typename Key, typename Data>
-    Node<Key,Data>* CreateLeaf(std::size_t size)
+    Leaf<Key,Data>* CreateLeaf(std::size_t size)
     {
         size_t s = sizeof (Leaf<Key,Data>) - sizeof (Leaf<Key,Data>::records);
         Leaf<Key,Data> *output = (Leaf<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key,Data*>));
@@ -198,6 +198,8 @@ namespace BwTree {
         }
 
         PID findDataPage(Key key);
+
+        void consolidatePage(PID pid);
 
     public:
 
