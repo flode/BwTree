@@ -1,4 +1,6 @@
+#include <unordered_map>
 #include "bwtree.hpp"
+#include <cassert>
 namespace BwTree {
 
     template<typename Key, typename Data>
@@ -46,6 +48,7 @@ namespace BwTree {
                     continue;
                 };
                 default: {
+                    assert(false);
                 }
             }
             node = nullptr;
@@ -56,30 +59,51 @@ namespace BwTree {
 
 
     template<typename Key, typename Data>
-    PID Tree<Key, Data>::findDataPage(Key key) {
+    PID Tree<Key, Data>::findDataPage(Key key) {// TODO return memory location as well
         auto nextPID = root;
+        std::size_t debugTMPCheck = 0;
         while (nextPID != std::numeric_limits<PID>::max()) {
+            if (debugTMPCheck++ > 100) {
+                assert(true);
+                std::cout << "test" << std::endl;
+            }
             Node<Key, Data> *nextNode = mapping[nextPID];
             while (nextNode != nullptr) {
                 switch (nextNode->type) {
                     case PageType::deltaIndex:
+                        assert(false);//not implemented
                     case PageType::inner:{
                         auto node1 = static_cast<InnerNode<Key,Data>*>(nextNode);
+                        // TODO with binary search
                         for (int i = 0; i < node1->nodeCount; ++i) {
                             if (std::get<0>(node1->nodes[i]) < key){
-                                return std::get<1>(node1->nodes[i]);
+                                nextNode = nullptr;
+                                nextPID = std::get<1>(node1->nodes[i]);
+                                continue;
                             }
                         }
-                        // TODO with binary search
+                        if (nextNode == nullptr) {
+                            continue;
+                        }
                         return std::numeric_limits<PID>::max();
                     };
-                    case PageType::leaf:
+                    case PageType::leaf: {
+                        auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
+                        // TODO with binary search
+                        for (int i = 0; i < node1->recordCount; ++i) {
+                            if (std::get<0>(node1->records[i]) < key){
+                                return nextPID;
+                            }
+                        }
+                        return std::numeric_limits<PID>::max();
+                    };
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
                         if (std::get<0>(node1->record) == key) {
                             return nextPID;
                         }
                         nextNode = node1->origin;
+                        assert(nextNode != nullptr);
                         continue;
                     };
                     case PageType::deltaDelete: {
@@ -88,6 +112,7 @@ namespace BwTree {
                             return std::numeric_limits<PID>::max();
                         }
                         nextNode = node1->origin;
+                        assert(nextNode != nullptr);
                         continue;
                     };
                     case PageType::deltaSplit: {
@@ -97,10 +122,12 @@ namespace BwTree {
                             continue;
                         }
                         nextNode = node1->origin;
+                        assert(nextNode != nullptr);
                         continue;
                         return nextPID;//TODO traverse further? - yes
                     };
                     default: {
+                        assert(false); // not implemented
                     }
                 }
                 nextNode = nullptr;
