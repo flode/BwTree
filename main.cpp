@@ -14,11 +14,12 @@ int main() {
 
     std::default_random_engine d;
     std::uniform_int_distribution<int> rand(0, 1000000);
-    for (int i = 0; i < 10000; ++i) {
+    constexpr int numberValues = 10000;
+    for (int i = 0; i < numberValues; ++i) {
         values.push_back(rand(d));
     }
 
-    for (int j = 0; j < 10000; ++j) {
+    for (int j = 0; j < numberValues; ++j) {
         a.insert(j, &values[j]);
         map[j] = values[j];
         if (map[j] != *a.search(j)) {
@@ -26,18 +27,18 @@ int main() {
         }
     }
 
-    values.clear();
-    for (int i = 0; i < 10000; ++i) {
-        values.push_back(rand(d));
+    std::vector<unsigned> values2;
+    for (int i = 0; i < numberValues; ++i) {
+        values2.push_back(rand(d));
     }
 
-    for (int j = 0; j < 10000; ++j) {
+    for (int j = 0; j < numberValues; ++j) {
         if (rand(d) < 300000) {
             a.deleteKey(j);
             map.erase(j);
         } else {
-            a.insert(j, &values[j]);
-            map[j] = values[j];
+            a.insert(j, &values2[j]);
+            map[j] = values2[j];
         }
         const auto r1 = map.find(j);
         const auto r2 = a.search(j);
