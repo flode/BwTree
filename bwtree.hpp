@@ -201,6 +201,9 @@ namespace BwTree {
 
         void consolidatePage(PID pid);
 
+        template<typename T>
+        static std::size_t binarySearch(T array, std::size_t length, std::size_t tupleIndex, Key key);
+
     public:
 
         Tree() {
