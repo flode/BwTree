@@ -2,11 +2,50 @@
 #include <tuple>
 #include <random>
 #include <unordered_map>
+#include <thread>
 #include "bwtree.hpp"
 
 using namespace BwTree;
 
+void randomThreadTest() {
+    Tree<unsigned long, unsigned> tree;
+
+    std::vector<std::thread> threads;
+    constexpr int numberOfThreads = 1;
+    constexpr int numberValues = 3;
+    for (int i = 0; i < numberOfThreads; ++i) {
+        threads.push_back(std::thread([&tree]() {
+            std::default_random_engine d;
+            std::uniform_int_distribution<unsigned long> rand(0, std::numeric_limits<unsigned long>::max());
+            std::vector<unsigned> values;
+            for (int i = 0; i < numberValues; ++i) {
+                values.push_back(i);//rand(d));
+                tree.insert(values[i], &(values[i]));
+            }
+            for (auto &v : values) {
+                auto r = tree.search(v);
+                if (r == nullptr || *r!=v) {
+                    std::cout << "wrong value!! " << *r << " " << v << std::endl;
+                }
+            }
+        }));
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
+    }
+}
+
 int main() {
+    randomThreadTest();
+    return 0;
+    /**
+    * Tasks for next week (3.12.2014)
+    * - random test pattern
+    * - multi thread access
+    * - deconstructor
+    * - binary search in nodes - OK
+    */
     Tree<unsigned long, unsigned> a;
     std::unordered_map<unsigned long, unsigned> map;
 
