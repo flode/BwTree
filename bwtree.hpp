@@ -174,7 +174,7 @@ namespace BwTree {
         //std::array<std::atomic<Node<Key,Data>*>,2048> mapping{};
         //PID mappingSize = 2048;
         std::atomic<PID> mappingNext{0};
-        std::atomic<unsigned long> atomicCollisions;
+        std::atomic<unsigned long> atomicCollisions{0};
 
         //std::mutex insertMutex;
 
@@ -203,7 +203,7 @@ namespace BwTree {
         */
         std::tuple<PID, Node<Key,Data>*, Node<Key,Data>*> findDataPage(Key key);
 
-        void consolidatePage(PID pid);
+        void consolidateLeafPage(PID pid);
 
         template<typename T>
         static std::size_t binarySearch(T array, std::size_t length, std::size_t tupleIndex, Key key);
@@ -213,7 +213,6 @@ namespace BwTree {
         Tree() {
             Node<Key, Data> *node = CreateLeaf<Key,Data>(0);
             root = newNode(node);
-            atomicCollisions.store(0);
         }
 
         ~Tree();

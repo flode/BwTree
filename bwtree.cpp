@@ -105,7 +105,7 @@ namespace BwTree {
             while (nextNode != nullptr) {
                 ++pageDepth;
                 if (pageDepth == 1000) {//TODO save for later
-                    consolidatePage(nextPID);
+                    consolidateLeafPage(nextPID);
                 }
                 switch (nextNode->type) {
                     case PageType::deltaIndex:
@@ -232,7 +232,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::consolidatePage(PID pid) {
+    void Tree<Key, Data>::consolidateLeafPage(PID pid) {
         Node<Key, Data> *startNode = mapping[pid];
 
         Node<Key, Data> *node = startNode;
@@ -305,7 +305,7 @@ namespace BwTree {
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
-            consolidatePage(pid);
+            consolidateLeafPage(pid);
         }
     }
 
