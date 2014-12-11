@@ -308,6 +308,36 @@ namespace BwTree {
             consolidatePage(pid);
         }
     }
+
+    template<typename Key, typename Data>
+    Tree<Key,Data>::~Tree() {
+        for (int i = 0; i < mappingNext; ++i) {
+            Node<Key,Data> *node = mapping[i];
+            while (node != nullptr) {
+                switch (node->type) {
+                    case PageType::inner: /* fallthrough */
+                    case PageType::leaf: {
+                        free(node);
+                        break;
+                    }
+                    case PageType::deltaIndex: /* fallthrough */
+                    case PageType::deltaDelete: /* fallthrough */
+                    case PageType::deltaSplit: /* fallthrough */
+                    case PageType::deltaInsert: {
+                        auto node1 = static_cast<DeltaNode<Key, Data> *>(node);
+                        node = node1->origin;
+                        free(node1);
+                        continue;
+                    }
+                    default: {
+                        assert(false);//all nodes have to be handeled
+                    }
+                }
+                node = nullptr;
+            }
+        }
+
+    }
 }
 
 

@@ -216,9 +216,7 @@ namespace BwTree {
             atomicCollisions.store(0);
         }
 
-        ~Tree() {
-            // TODO free()
-        }
+        ~Tree();
 
         void insert(Key key, Data *record);
 
