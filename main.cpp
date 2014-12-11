@@ -11,15 +11,15 @@ void randomThreadTest() {
     Tree<unsigned long, unsigned> tree;
 
     std::vector<std::thread> threads;
-    constexpr int numberOfThreads = 1;
-    constexpr int numberValues = 3;
+    constexpr int numberOfThreads = 8;
+    constexpr int numberValues = 80;
     for (int i = 0; i < numberOfThreads; ++i) {
         threads.push_back(std::thread([&tree]() {
             std::default_random_engine d;
             std::uniform_int_distribution<unsigned long> rand(0, std::numeric_limits<unsigned long>::max());
-            std::vector<unsigned> values;
+            std::array<unsigned,numberValues> values;
             for (int i = 0; i < numberValues; ++i) {
-                values.push_back(i);//rand(d));
+                values[i] = rand(d);
                 tree.insert(values[i], &(values[i]));
             }
             for (auto &v : values) {
@@ -30,10 +30,10 @@ void randomThreadTest() {
             }
         }));
     }
-
     for (auto &thread : threads) {
         thread.join();
     }
+    std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
 }
 
 int main() {
