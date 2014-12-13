@@ -149,11 +149,9 @@ namespace BwTree {
                 assert(false); // only leafs  should come to here
             case PageType::deltaInsert:
             case PageType::deltaDelete:
+            case PageType::deltaSplit:
             case PageType::leaf: {
-                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>();
-                std::get<0>(newNode->record) = key;
-                std::get<1>(newNode->record) = record;
-                newNode->origin = startNode;
+                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(startNode, std::make_tuple(key, record));
                 if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
                     ++atomicCollisions;
                     free(newNode);
@@ -182,9 +180,7 @@ namespace BwTree {
             case PageType::deltaDelete:
             case PageType::deltaInsert:
             case PageType::leaf: {
-                DeltaDelete<Key, Data> *newDeleteNode = CreateDeltaDelete<Key, Data>();
-                newDeleteNode->key = key;
-                newDeleteNode->origin = startNode;
+                DeltaDelete<Key, Data> *newDeleteNode = CreateDeltaDelete<Key, Data>(startNode, key);
                 if (!mapping[pid].compare_exchange_weak(startNode, newDeleteNode)) {
                     ++atomicCollisions;
                     free(newDeleteNode);

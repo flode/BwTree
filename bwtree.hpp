@@ -110,7 +110,7 @@ namespace BwTree {
     Leaf<Key,Data>* CreateLeaf(std::size_t size, PID next, PID prev)
     {
         size_t s = sizeof (Leaf<Key,Data>) - sizeof (Leaf<Key,Data>::records);
-        Leaf<Key,Data> *output = (Leaf<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key,Data*>));
+        Leaf<Key,Data> *output = (Leaf<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key, const Data*>));
         output->recordCount = size;
         output->type = PageType::leaf;
         output->next = next;
@@ -119,29 +119,36 @@ namespace BwTree {
     }
 
     template <typename Key, typename Data>
-    DeltaInsert<Key,Data>* CreateDeltaInsert()
+    DeltaInsert<Key,Data>* CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data*> record)
     {
         size_t s = sizeof (DeltaInsert<Key,Data>);
         DeltaInsert<Key,Data> *output = (DeltaInsert<Key,Data>*) malloc(s);
         output->type = PageType::deltaInsert;
+        output->origin = origin;
+        output->record = record;
         return output;
     }
 
     template <typename Key, typename Data>
-    DeltaDelete<Key,Data>* CreateDeltaDelete()
+    DeltaDelete<Key,Data>* CreateDeltaDelete(Node<Key, Data> *origin, Key key)
     {
         size_t s = sizeof (DeltaDelete<Key,Data>);
         DeltaDelete<Key,Data> *output = (DeltaDelete<Key,Data>*) malloc(s);
         output->type = PageType::deltaDelete;
+        output->origin = origin;
+        output->key = key;
         return output;
     }
 
     template <typename Key, typename Data>
-    DeltaSplit<Key,Data>* CreateDeltaSplit()
+    DeltaSplit<Key,Data>* CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink)
     {
         size_t s = sizeof (DeltaSplit<Key,Data>);
         DeltaSplit<Key,Data> *output = (DeltaSplit<Key,Data>*) malloc(s);
         output->type = PageType::deltaSplit;
+        output->origin = origin;
+        output->key = splitKey;
+        output->sidelink = sidelink;
         return output;
     }
 
