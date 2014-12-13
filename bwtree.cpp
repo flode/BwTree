@@ -212,7 +212,7 @@ namespace BwTree {
             ++atomicCollisions;
             free(splitNode);
             free(newRightNode);
-            mapping[pid].store(nullptr);
+            mapping[newNodePID].store(nullptr);
             splitLeafPage(pid);//TODO without recursion
             return;
         }
