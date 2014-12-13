@@ -22,14 +22,14 @@ namespace BwTree {
                     return nullptr;
                 } else {
                     if (std::get<0>(node1->records[res]) == key) {
-                        return const_cast<Data*>(std::get<1>(node1->records[res]));
+                        return const_cast<Data *>(std::get<1>(node1->records[res]));
                     }
                 }
             }
             case PageType::deltaInsert: {
                 auto node1 = static_cast<DeltaInsert<Key, Data> *>(dataNode);
                 if (std::get<0>(node1->record) == key) {
-                    return const_cast<Data*>(std::get<1>(node1->record));
+                    return const_cast<Data *>(std::get<1>(node1->record));
                 }
             }
             case PageType::deltaDelete:
@@ -173,7 +173,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::insert(Key key, const Data * const record) {
+    void Tree<Key, Data>::insert(Key key, const Data *const record) {
         PID pid;
         Node<Key, Data> *startNode;
         Node<Key, Data> *dataNode;
@@ -236,7 +236,7 @@ namespace BwTree {
         Node<Key, Data> *startNode = mapping[pid];
 
         Node<Key, Data> *node = startNode;
-        std::vector<std::tuple<Key, const Data*>> records;
+        std::vector<std::tuple<Key, const Data *>> records;
         std::unordered_map<Key, bool> consideredKeys;
         Key stopAtKey;
         bool pageSplit = false;
@@ -293,8 +293,8 @@ namespace BwTree {
         }
         // construct a new node
         auto newNode = CreateLeaf<Key, Data>(records.size());
-        auto & a= records[0];
-        std::sort(records.begin(), records.end(), [](const std::tuple<Key, const Data*> &t1, const std::tuple<Key, const Data *> &t2) {
+        auto &a = records[0];
+        std::sort(records.begin(), records.end(), [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
             return std::get<0>(t1) < std::get<0>(t2);
         });
         int i = 0;
@@ -303,16 +303,19 @@ namespace BwTree {
         }
         newNode->next = next;
         newNode->prev = prev;
+        Node<Key,Data> *previousNode = startNode;
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
             consolidateLeafPage(pid);
+        } else {
+            markForDeletion(previousNode);
         }
     }
 
     template<typename Key, typename Data>
-    Tree<Key,Data>::~Tree() {
+    Tree<Key, Data>::~Tree() {
         for (int i = 0; i < mappingNext; ++i) {
-            Node<Key,Data> *node = mapping[i];
+            Node<Key, Data> *node = mapping[i];
             while (node != nullptr) {
                 switch (node->type) {
                     case PageType::inner: /* fallthrough */
@@ -337,6 +340,14 @@ namespace BwTree {
             }
         }
 
+    }
+
+    template<typename Key, typename Data>
+    void Tree<Key,Data>::markForDeletion(Node<Key, Data> *node) {
+        std::size_t index = deleteNodeNext++;
+        if (index == deletedNodes.size())
+            assert(false); //too many deleted nodes
+        deletedNodes[index] = node;
     }
 }
 

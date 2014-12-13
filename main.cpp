@@ -64,7 +64,7 @@ int main() {
     */
     /**
     * Tasks for next week (11.12.2014)
-    * - fix random bugs that occur with threads :(
+    * - fix random bugs that occur with threads :( - OK!
     * - manuel split of nodes
     * - consolidate inner nodes as well
     */

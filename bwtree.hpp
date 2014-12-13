@@ -179,7 +179,8 @@ namespace BwTree {
         std::atomic<unsigned long> atomicCollisions{0};
 
         //std::mutex insertMutex;
-
+        std::array<Node<Key,Data>*,10000> deletedNodes;
+        std::atomic<std::size_t> deleteNodeNext{0};
 
         Node<Key,Data>* PIDToNodePtr(PID node) {
             return mapping[node];
@@ -206,6 +207,8 @@ namespace BwTree {
         std::tuple<PID, Node<Key,Data>*, Node<Key,Data>*> findDataPage(Key key);
 
         void consolidateLeafPage(PID pid);
+
+        void markForDeletion(Node<Key,Data>*);
 
         template<typename T>
         static std::size_t binarySearch(T array, std::size_t length, std::size_t tupleIndex, Key key);
