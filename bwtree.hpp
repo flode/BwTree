@@ -10,6 +10,8 @@
 namespace BwTree {
 
     using PID = std::size_t;
+    constexpr PID NotExistantPID = std::numeric_limits<PID>::max();
+
     enum class PageType : std::int8_t  {
         leaf,
         inner,
@@ -30,7 +32,7 @@ namespace BwTree {
         PID next;
         std::size_t recordCount;
         // has to be last member for dynamic malloc() !!!
-        std::tuple<Key, Data*> records[];
+        std::tuple<Key, const Data*> records[];
     private:
         Leaf() = delete;
         ~Leaf() = delete;
@@ -59,7 +61,7 @@ namespace BwTree {
 
     template <typename Key, typename Data>
     struct DeltaInsert : DeltaNode<Key,Data> {
-        std::tuple<Key, Data*> record;
+        std::tuple<Key, const Data*> record;
     private:
         DeltaInsert() = delete;
         ~DeltaInsert() = delete;
@@ -179,9 +181,9 @@ namespace BwTree {
         //std::mutex insertMutex;
 
 
-        /*Node<Key,Data>* PIDToNodePtr(PID node) {
+        Node<Key,Data>* PIDToNodePtr(PID node) {
             return mapping[node];
-        }*/
+        }
 
         PID newNode(Node<Key,Data>* node) {
             //std::lock_guard<std::mutex> lock(insertMutex);
@@ -217,7 +219,7 @@ namespace BwTree {
 
         ~Tree();
 
-        void insert(Key key, Data *record);
+        void insert(Key key, const Data * const record);
 
         void deleteKey(Key key);
 

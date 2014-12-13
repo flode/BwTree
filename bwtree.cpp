@@ -22,14 +22,14 @@ namespace BwTree {
                     return nullptr;
                 } else {
                     if (std::get<0>(node1->records[res]) == key) {
-                        return std::get<1>(node1->records[res]);
+                        return const_cast<Data*>(std::get<1>(node1->records[res]));
                     }
                 }
             }
             case PageType::deltaInsert: {
                 auto node1 = static_cast<DeltaInsert<Key, Data> *>(dataNode);
                 if (std::get<0>(node1->record) == key) {
-                    return std::get<1>(node1->record);
+                    return const_cast<Data*>(std::get<1>(node1->record));
                 }
             }
             case PageType::deltaDelete:
@@ -92,16 +92,16 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     std::tuple<PID, Node<Key, Data> *, Node<Key, Data> *> Tree<Key, Data>::findDataPage(Key key) {
-        auto nextPID = root;
+        PID nextPID = root;
         std::size_t debugTMPCheck = 0;
-        while (nextPID != std::numeric_limits<PID>::max()) {
+        while (nextPID != NotExistantPID) {
             if (debugTMPCheck++ > 100) {
                 assert(true);
                 std::cout << "test" << std::endl;
             }
             std::size_t pageDepth = 0;
-            Node<Key, Data> *startNode = mapping[nextPID];
-            auto nextNode = startNode;
+            Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
+            Node<Key, Data> *nextNode = startNode;
             while (nextNode != nullptr) {
                 ++pageDepth;
                 if (pageDepth == 1000) {//TODO save for later
@@ -136,7 +136,6 @@ namespace BwTree {
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
                         if (std::get<0>(node1->record) == key) {
-                            auto &r = node1->record;
                             return std::make_tuple(nextPID, startNode, nextNode);
                         }
                         nextNode = node1->origin;
@@ -174,7 +173,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::insert(Key key, Data *record) {
+    void Tree<Key, Data>::insert(Key key, const Data * const record) {
         PID pid;
         Node<Key, Data> *startNode;
         Node<Key, Data> *dataNode;
@@ -186,7 +185,6 @@ namespace BwTree {
             case PageType::deltaDelete:
             case PageType::leaf: {
                 DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>();
-                auto b = *record;
                 std::get<0>(newNode->record) = key;
                 std::get<1>(newNode->record) = record;
                 newNode->origin = startNode;
@@ -198,6 +196,8 @@ namespace BwTree {
                 }
                 return;
             }
+            default:
+                assert(false); //shouldn't happen
         }
         assert(false);
     }
@@ -236,7 +236,7 @@ namespace BwTree {
         Node<Key, Data> *startNode = mapping[pid];
 
         Node<Key, Data> *node = startNode;
-        std::vector<std::tuple<Key, Data *>> records;
+        std::vector<std::tuple<Key, const Data*>> records;
         std::unordered_map<Key, bool> consideredKeys;
         Key stopAtKey;
         bool pageSplit = false;
@@ -286,23 +286,23 @@ namespace BwTree {
                     continue;
                 };
                 default: {
+                    assert(false); //shouldn't occur here
                 }
             }
             node = nullptr;
         }
         // construct a new node
         auto newNode = CreateLeaf<Key, Data>(records.size());
-        std::sort(records.begin(), records.end(), [](const std::tuple<Key, Data *> &t1, const std::tuple<Key, Data *> &t2) {
+        auto & a= records[0];
+        std::sort(records.begin(), records.end(), [](const std::tuple<Key, const Data*> &t1, const std::tuple<Key, const Data *> &t2) {
             return std::get<0>(t1) < std::get<0>(t2);
         });
-        //records.data(); // TODO memcopy
         int i = 0;
         for (auto &r : records) {
             newNode->records[i++] = r;
         }
         newNode->next = next;
         newNode->prev = prev;
-
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
             consolidateLeafPage(pid);
