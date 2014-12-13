@@ -216,7 +216,15 @@ namespace BwTree {
         */
         std::tuple<PID, Node<Key,Data>*, Node<Key,Data>*> findDataPage(Key key);
 
+        void consolidatePage(PID pid) {//TODO add to a list
+            consolidateLeafPage(pid);
+        }
+
         void consolidateLeafPage(PID pid);
+
+        Leaf<Key,Data> *createConsolidatedLeafPage(Node<Key,Data>* startNode, Key keysGreaterEqualThan = 0);
+
+        void splitLeafPage(PID pid);
 
         void markForDeletion(Node<Key,Data>*);
 

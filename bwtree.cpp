@@ -200,7 +200,23 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateLeafPage(PID pid) {
         Node<Key, Data> *startNode = mapping[pid];
+        Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
+        auto c = newNode->recordCount;
+        Node<Key, Data> *previousNode = startNode;
 
+        if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+            ++atomicCollisions;
+            consolidateLeafPage(pid);
+        } else {
+            markForDeletion(previousNode);
+            if (newNode->recordCount > settings.SplitLeafPage) {
+                splitLeafPage(pid);
+            }
+        }
+    }
+
+    template<typename Key, typename Data>
+    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan) {
         Node<Key, Data> *node = startNode;
         std::vector<std::tuple<Key, const Data *>> records;
         std::unordered_map<Key, bool> consideredKeys;
@@ -212,9 +228,10 @@ namespace BwTree {
                 case PageType::leaf: {
                     auto node1 = static_cast<Leaf<Key, Data> *>(node);
                     for (int i = 0; i < node1->recordCount; ++i) {
-                        if (consideredKeys.find(std::get<0>(node1->records[i])) == consideredKeys.end()) {
+                        auto &curKey = std::get<0>(node1->records[i]);
+                        if (curKey >= keysGreaterEqualThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
                             records.push_back(node1->records[i]);
-                            consideredKeys[std::get<0>(node1->records[i])] = true;
+                            consideredKeys[curKey] = true;
                         }
                     }
                     prev = node1->prev;
@@ -226,9 +243,10 @@ namespace BwTree {
                 }
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
-                    if (consideredKeys.find(std::get<0>(node1->record)) == consideredKeys.end()) {
+                    auto &curKey = std::get<0>(node1->record);
+                    if (curKey >= keysGreaterEqualThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
                         records.push_back(node1->record);
-                        consideredKeys[std::get<0>(node1->record)] = true;
+                        consideredKeys[curKey] = true;
                     }
                     node = node1->origin;
                     continue;
@@ -267,13 +285,7 @@ namespace BwTree {
         for (auto &r : records) {
             newNode->records[i++] = r;
         }
-        Node<Key, Data> *previousNode = startNode;
-        if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
-            ++atomicCollisions;
-            consolidateLeafPage(pid);
-        } else {
-            markForDeletion(previousNode);
-        }
+        return newNode;
     }
 
     template<typename Key, typename Data>
