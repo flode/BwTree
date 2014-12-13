@@ -170,6 +170,10 @@ namespace BwTree {
 
     template <typename Key, typename Data>
     class Tree {
+        /**
+        * Special Invariant:
+        * - Leaf nodes always contain special infinity value at the right end for the last pointer
+        */
         PID root;
         std::vector<std::atomic<Node<Key,Data>*>> mapping{2048};
         //std::atomic<Node<Key,Data>*> mapping[2048];
@@ -211,7 +215,7 @@ namespace BwTree {
         void markForDeletion(Node<Key,Data>*);
 
         template<typename T>
-        static std::size_t binarySearch(T array, std::size_t length, std::size_t tupleIndex, Key key);
+        static size_t binarySearch(T array, std::size_t length, Key key);
 
     public:
 

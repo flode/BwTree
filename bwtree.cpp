@@ -17,13 +17,11 @@ namespace BwTree {
         switch (dataNode->type) {
             case PageType::leaf: {
                 auto node1 = static_cast<Leaf<Key, Data> *>(dataNode);
-                auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, 0, key);
-                if (res == std::numeric_limits<std::size_t>::max()) {
-                    return nullptr;
+                auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
+                if (res != 0 && res != std::numeric_limits<std::size_t>::max() && (std::get<0>(node1->records[res - 1]) == key)) {
+                    return const_cast<Data *>(std::get<1>(node1->records[res - 1]));
                 } else {
-                    if (std::get<0>(node1->records[res]) == key) {
-                        return const_cast<Data *>(std::get<1>(node1->records[res]));
-                    }
+                    assert(false); //value should exist at this point
                 }
             }
             case PageType::deltaInsert: {
@@ -44,49 +42,28 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     template<typename T>
-    std::size_t Tree<Key, Data>::binarySearch(T array, std::size_t length, std::size_t tupleIndex, Key key) {
-        if (length == 0) {
-            return std::numeric_limits<std::size_t>::max();
-        }
-        std::size_t curdif = length >> 1;
-        std::size_t i = curdif;
-        std::size_t leftInterval = 0, rightInterval = length - 1;
-        std::size_t tmpCounterSafe = 0;
-        while (leftInterval != rightInterval) {
-            curdif >>= 1;
-            Key curKey = std::get<0>(array[i]);
-            if (curKey == key) {
-                return i;
-            } else if (curKey < key) {
-                if (i == rightInterval) {
-                    break;
-                }
-                leftInterval = i + 1;
-                if (curdif == 0) {
-                    ++i;
-                } else {
-                    i += curdif;
-                }
+    size_t Tree<Key, Data>::binarySearch(T array, std::size_t length, Key key) {
+        //std cpp code upper_bound
+        std::size_t first = 0;
+        std::size_t i;
+        std::size_t count, step;
+        count = length;
+        while (count > 0) {
+            i = first;
+            step = count / 2;
+            i += step;
+            if (!(key < std::get<0>(array[i]))) {
+                first = ++i;
+                count -= step + 1;
             } else {
-                if (i == leftInterval) {
-                    break;
-                }
-                rightInterval = i - 1;
-                if (curdif == 0) {
-                    --i;
-                } else {
-                    i -= curdif;
-                }
-            }
-            assert(tmpCounterSafe++ < 1000);
-        }
-        Key curKey = std::get<0>(array[i]);
-        if (leftInterval == rightInterval) {
-            if ((leftInterval != 0 && rightInterval != length - 1) || curKey == key) {
-                return i;
+                count = step;
             }
         }
-        return std::numeric_limits<std::size_t>::max();
+        if (first >= length) {
+            return std::numeric_limits<std::size_t>::max();
+        } else {
+            return first;
+        }
     }
 
 
@@ -112,21 +89,18 @@ namespace BwTree {
                         assert(false);//not implemented
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
-                        auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, 0, key);
-                        if (res == std::numeric_limits<std::size_t>::max()) {
-                            return std::make_tuple(nextPID, startNode, nullptr);
-                        } else {
-                            nextNode = nullptr;
-                            nextPID = std::get<1>(node1->nodes[res]);
-                        }
+                        auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
+                        nextNode = nullptr;
+                        nextPID = std::get<1>(node1->nodes[res]);
+                        break;
                     };
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
-                        auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, 0, key);
-                        if (res == std::numeric_limits<std::size_t>::max()) {
+                        auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
+                        if (res == 0 || res == std::numeric_limits<std::size_t>::max()) {
                             return std::make_tuple(nextPID, startNode, nullptr);
                         } else {
-                            if (std::get<0>(node1->records[res]) == key) {
+                            if (std::get<0>(node1->records[res - 1]) == key) {
                                 return std::make_tuple(nextPID, startNode, nextNode);
                             } else {
                                 return std::make_tuple(nextPID, startNode, nullptr);
@@ -343,7 +317,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key,Data>::markForDeletion(Node<Key, Data> *node) {
+    void Tree<Key, Data>::markForDeletion(Node<Key, Data> *node) {
         std::size_t index = deleteNodeNext++;
         if (index == deletedNodes.size())
             assert(false); //too many deleted nodes
