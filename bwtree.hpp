@@ -182,6 +182,12 @@ namespace BwTree {
         std::atomic<PID> mappingNext{0};
         std::atomic<unsigned long> atomicCollisions{0};
 
+        struct Settings {
+            std::size_t ConsolidateLeafPage = 1000;
+        };
+
+        constexpr static Settings settings{};
+
         //std::mutex insertMutex;
         std::array<Node<Key,Data>*,10000> deletedNodes;
         std::atomic<std::size_t> deleteNodeNext{0};

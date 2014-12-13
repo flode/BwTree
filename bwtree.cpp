@@ -81,7 +81,7 @@ namespace BwTree {
             Node<Key, Data> *nextNode = startNode;
             while (nextNode != nullptr) {
                 ++pageDepth;
-                if (pageDepth == 1000) {//TODO save for later
+                if (pageDepth == settings.ConsolidateLeafPage) {//TODO save for later
                     consolidateLeafPage(nextPID);
                 }
                 switch (nextNode->type) {
