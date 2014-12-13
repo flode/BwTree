@@ -59,11 +59,7 @@ namespace BwTree {
                 count = step;
             }
         }
-        if (first >= length) {
-            return std::numeric_limits<std::size_t>::max();
-        } else {
-            return first;
-        }
+        return first;
     }
 
 
@@ -97,14 +93,10 @@ namespace BwTree {
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
-                        if (res == 0 || res == std::numeric_limits<std::size_t>::max()) {
-                            return std::make_tuple(nextPID, startNode, nullptr);
+                        if (res != 0 && std::get<0>(node1->records[res - 1]) == key) {
+                            return std::make_tuple(nextPID, startNode, nextNode);
                         } else {
-                            if (std::get<0>(node1->records[res - 1]) == key) {
-                                return std::make_tuple(nextPID, startNode, nextNode);
-                            } else {
-                                return std::make_tuple(nextPID, startNode, nullptr);
-                            }
+                            return std::make_tuple(nextPID, startNode, nullptr);
                         }
                     };
                     case PageType::deltaInsert: {
@@ -242,11 +234,11 @@ namespace BwTree {
                     continue;
                 }
                 case PageType::deltaDelete: {
-                    auto node2 = static_cast<DeltaDelete<Key, Data> *>(node);
-                    if (consideredKeys.find(node2->key) == consideredKeys.end()) {
-                        consideredKeys[node2->key] = true;
+                    auto node1 = static_cast<DeltaDelete<Key, Data> *>(node);
+                    if (consideredKeys.find(node1->key) == consideredKeys.end()) {
+                        consideredKeys[node1->key] = true;
                     }
-                    node = node2->origin;
+                    node = node1->origin;
                     continue;
                 }
                 case PageType::deltaSplit: {
