@@ -96,6 +96,11 @@ namespace BwTree {
                         if (res != 0 && std::get<0>(node1->records[res - 1]) == key) {
                             return std::make_tuple(nextPID, startNode, nextNode);
                         } else {
+                            if (res == node1->recordCount && node1->next != NotExistantPID) {
+                                nextPID = node1->next;
+                                nextNode = nullptr;
+                                continue;
+                            }
                             return std::make_tuple(nextPID, startNode, nullptr);
                         }
                     };
@@ -203,16 +208,16 @@ namespace BwTree {
 
         Leaf<Key, Data> *newRightNode = createConsolidatedLeafPage(startNode, Kp);
         newRightNode->prev = pid;
-        PID newNodePID = newNode(newRightNode);
+        PID newRightNodePID = newNode(newRightNode);
 
-        DeltaSplit<Key, Data> *splitNode = CreateDeltaSplit(startNode, Kp, newNodePID);
+        DeltaSplit<Key, Data> *splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID);
 
         auto c = newRightNode->recordCount; auto b = tempNode->recordCount;
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
             free(splitNode);
             free(newRightNode);
-            mapping[newNodePID].store(nullptr);
+            mapping[newRightNodePID].store(nullptr);
             splitLeafPage(pid);//TODO without recursion
             return;
         }
