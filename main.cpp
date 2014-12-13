@@ -8,30 +8,46 @@
 using namespace BwTree;
 
 void randomThreadTest() {
-    Tree<unsigned long, unsigned> tree;
+    Tree<unsigned long long, unsigned long long> tree;
 
     std::vector<std::thread> threads;
-    constexpr int numberOfThreads = 8;
-    constexpr int numberValues = 80;
+    constexpr int numberOfThreads = 4;
+    constexpr int numberValues = numberOfThreads * 30000;
+
+
+    std::default_random_engine d;
+    std::uniform_int_distribution<unsigned long long> rand(0, std::numeric_limits<unsigned long long>::max());
+    std::array<unsigned long long,numberValues> values;
+    for (int i = 0; i < numberValues; ++i) {
+        values[i] = rand(d);
+    }
+    std::size_t start = 0;
+    std::size_t delta = numberValues / numberOfThreads;
+    const auto &t_values = values;
     for (int i = 0; i < numberOfThreads; ++i) {
-        threads.push_back(std::thread([&tree]() {
-            std::default_random_engine d;
-            std::uniform_int_distribution<unsigned long> rand(0, std::numeric_limits<unsigned long>::max());
-            std::array<unsigned,numberValues> values;
-            for (int i = 0; i < numberValues; ++i) {
-                values[i] = rand(d);
-                tree.insert(values[i], &(values[i]));
+        threads.push_back(std::thread([&tree, &t_values, start, delta]() {
+            for (int i = start; i < start + delta; ++i) {
+                tree.insert(t_values[i], &(t_values[i]));
             }
-            for (auto &v : values) {
+            for (int i = start; i < start + delta; ++i) {
+                auto &v = t_values[i];
                 auto r = tree.search(v);
                 if (r == nullptr || *r!=v) {
-                    std::cout << "wrong value!! " << *r << " " << v << std::endl;
+                    std::cout << "wrong value!! " << (r== nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
                 }
             }
         }));
+        start += delta;
     }
+
     for (auto &thread : threads) {
         thread.join();
+    }
+    for (auto &v : values) {
+        auto r = tree.search(v);
+        if (r == nullptr || *r!=v) {
+            std::cout << "wrong value!! " << (r== nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+        }
     }
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
 }
@@ -41,10 +57,16 @@ int main() {
     return 0;
     /**
     * Tasks for next week (3.12.2014)
-    * - random test pattern
-    * - multi thread access
-    * - deconstructor
+    * - random test pattern - OK
+    * - multi thread access - OK
+    * - deconstructor - OK
     * - binary search in nodes - OK
+    */
+    /**
+    * Tasks for next week (11.12.2014)
+    * - fix random bugs that occur with threads :(
+    * - manuel split of nodes
+    * - consolidate inner nodes as well
     */
     Tree<unsigned long, unsigned> a;
     std::unordered_map<unsigned long, unsigned> map;
