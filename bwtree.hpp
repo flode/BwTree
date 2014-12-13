@@ -95,7 +95,7 @@ namespace BwTree {
     };
 
     template <typename Key, typename Data>
-    Node<Key,Data>* CreateInnerNode(std::size_t size)
+    InnerNode<Key,Data>* CreateInnerNode(std::size_t size)
     {
         size_t s = sizeof (InnerNode<Key,Data>) - sizeof (InnerNode<Key,Data>::nodes);
         InnerNode<Key,Data> *output = (InnerNode<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key,PID>));
@@ -192,14 +192,10 @@ namespace BwTree {
 
         PID newNode(Node<Key,Data>* node) {
             //std::lock_guard<std::mutex> lock(insertMutex);
-            PID nextPID = mappingNext;
-            while(true) {
-                if (nextPID == mapping.size()) {
-                    std::cerr << "Mapping table is full, aborting!" << std::endl;
-                    exit(1);
-                }
-                mappingNext.compare_exchange_weak(nextPID, nextPID+1);
-                break;
+            PID nextPID = mappingNext++;
+            if (nextPID >= mapping.size()) {
+                std::cerr << "Mapping table is full, aborting!" << std::endl;
+                exit(1);
             }
             mapping[nextPID] = node;
             return nextPID;
@@ -220,8 +216,13 @@ namespace BwTree {
     public:
 
         Tree() {
-            Node<Key, Data> *node = CreateLeaf<Key,Data>(0);
-            root = newNode(node);
+            Node<Key, Data> *datanode = CreateLeaf<Key,Data>(0);
+            PID dataNodePID = newNode(datanode);
+            InnerNode<Key, Data> *innerNode = CreateInnerNode<Key,Data>(1);
+            innerNode->next = NotExistantPID;//TODO to createinnerNode
+            innerNode->prev = NotExistantPID;
+            innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(),dataNodePID);
+            root = newNode(innerNode);
         }
 
         ~Tree();
