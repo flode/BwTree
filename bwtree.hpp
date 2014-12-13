@@ -95,22 +95,26 @@ namespace BwTree {
     };
 
     template <typename Key, typename Data>
-    InnerNode<Key,Data>* CreateInnerNode(std::size_t size)
+    InnerNode<Key,Data>* CreateInnerNode(std::size_t size, PID next, PID prev)
     {
         size_t s = sizeof (InnerNode<Key,Data>) - sizeof (InnerNode<Key,Data>::nodes);
         InnerNode<Key,Data> *output = (InnerNode<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key,PID>));
         output->nodeCount = size;
         output->type = PageType::inner;
+        output->next = next;
+        output->prev = prev;
         return output;
     }
 
     template <typename Key, typename Data>
-    Leaf<Key,Data>* CreateLeaf(std::size_t size)
+    Leaf<Key,Data>* CreateLeaf(std::size_t size, PID next, PID prev)
     {
         size_t s = sizeof (Leaf<Key,Data>) - sizeof (Leaf<Key,Data>::records);
         Leaf<Key,Data> *output = (Leaf<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key,Data*>));
         output->recordCount = size;
         output->type = PageType::leaf;
+        output->next = next;
+        output->prev = prev;
         return output;
     }
 
@@ -222,11 +226,9 @@ namespace BwTree {
     public:
 
         Tree() {
-            Node<Key, Data> *datanode = CreateLeaf<Key,Data>(0);
+            Node<Key, Data> *datanode = CreateLeaf<Key,Data>(0, NotExistantPID, NotExistantPID);
             PID dataNodePID = newNode(datanode);
-            InnerNode<Key, Data> *innerNode = CreateInnerNode<Key,Data>(1);
-            innerNode->next = NotExistantPID;//TODO to createinnerNode
-            innerNode->prev = NotExistantPID;
+            InnerNode<Key, Data> *innerNode = CreateInnerNode<Key,Data>(1, NotExistantPID, NotExistantPID);
             innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(),dataNodePID);
             root = newNode(innerNode);
         }

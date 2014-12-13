@@ -2,6 +2,7 @@
 #include <tuple>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include <thread>
 #include "bwtree.hpp"
 

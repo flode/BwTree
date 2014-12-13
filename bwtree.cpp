@@ -258,7 +258,7 @@ namespace BwTree {
             node = nullptr;
         }
         // construct a new node
-        auto newNode = CreateLeaf<Key, Data>(records.size());
+        auto newNode = CreateLeaf<Key, Data>(records.size(), next, prev);
         auto &a = records[0];
         std::sort(records.begin(), records.end(), [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
             return std::get<0>(t1) < std::get<0>(t2);
@@ -267,9 +267,7 @@ namespace BwTree {
         for (auto &r : records) {
             newNode->records[i++] = r;
         }
-        newNode->next = next;
-        newNode->prev = prev;
-        Node<Key,Data> *previousNode = startNode;
+        Node<Key, Data> *previousNode = startNode;
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
             consolidateLeafPage(pid);
