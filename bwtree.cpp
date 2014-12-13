@@ -194,6 +194,31 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
+    void Tree<Key, Data>::splitLeafPage(PID pid) {
+        //TODO how to prevent double split?
+        Node<Key, Data> *startNode = mapping[pid];
+
+        Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
+        Key Kp = std::get<0>(tempNode->records[tempNode->recordCount / 2]);
+
+        Leaf<Key, Data> *newRightNode = createConsolidatedLeafPage(startNode, Kp);
+        newRightNode->prev = pid;
+        PID newNodePID = newNode(newRightNode);
+
+        DeltaSplit<Key, Data> *splitNode = CreateDeltaSplit(startNode, Kp, newNodePID);
+
+        auto c = newRightNode->recordCount; auto b = tempNode->recordCount;
+        if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
+            ++atomicCollisions;
+            free(splitNode);
+            free(newRightNode);
+            mapping[pid].store(nullptr);
+            splitLeafPage(pid);//TODO without recursion
+            return;
+        }
+    }
+
+    template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateLeafPage(PID pid) {
         Node<Key, Data> *startNode = mapping[pid];
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
