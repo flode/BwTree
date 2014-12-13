@@ -18,8 +18,13 @@ void randomThreadTest() {
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned long long> rand(0, std::numeric_limits<unsigned long long>::max());
     std::array<unsigned long long,numberValues> values;
+    std::unordered_set<unsigned long long> keys;
     for (int i = 0; i < numberValues; ++i) {
-        values[i] = rand(d);
+        unsigned long long val;
+        do {
+            val = rand(d);
+        } while (keys.find(val) != keys.end());
+        values[i] = val;
     }
     std::size_t start = 0;
     std::size_t delta = numberValues / numberOfThreads;
@@ -33,7 +38,7 @@ void randomThreadTest() {
                 auto &v = t_values[i];
                 auto r = tree.search(v);
                 if (r == nullptr || *r!=v) {
-                    std::cout << "wrong value!! " << (r== nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+                    std::cout << "wrong value inner!! " << (r== nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
                 }
             }
         }));
