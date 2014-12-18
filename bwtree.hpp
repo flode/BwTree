@@ -98,6 +98,7 @@ namespace BwTree {
         Key keyLeft; // greater than
         Key keyRight; // less or equal than
         PID child;
+        PID oldChild;
     private:
         DeltaIndex() = delete;
 
@@ -165,7 +166,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    DeltaIndex<Key, Data> *CreateDeltaIndex(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child) {
+    DeltaIndex<Key, Data> *CreateDeltaIndex(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child, PID oldChild) {
         size_t s = sizeof(DeltaIndex<Key, Data>);
         DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) malloc(s);
         output->type = PageType::deltaIndex;
@@ -173,6 +174,7 @@ namespace BwTree {
         output->keyLeft = splitKeyLeft;
         output->keyRight = splitKeyRight;
         output->child = child;
+        output->oldChild = oldChild;
         return output;
     }
 
