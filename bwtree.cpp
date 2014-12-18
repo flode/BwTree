@@ -71,8 +71,6 @@ namespace BwTree {
                 switch (nextNode->type) {
                     case PageType::deltaIndex: {
                         auto node1 = static_cast<DeltaIndex<Key, Data> *>(nextNode);
-                        auto a = parentNodes.size();
-                        auto b = parentNodes.top();
                         if (key > node1->keyLeft && key <= node1->keyRight) {
                             nextPID = node1->child;
                             nextNode = nullptr;
@@ -125,6 +123,7 @@ namespace BwTree {
                         assert(nextNode != nullptr);
                         continue;
                     };
+                    case PageType::deltaSplitInner:
                     case PageType::deltaSplit: {
                         auto node1 = static_cast<DeltaSplit<Key, Data> *>(nextNode);
                         if (key > node1->key) {
@@ -153,6 +152,7 @@ namespace BwTree {
         switch (res.startNode->type) {
             case PageType::deltaIndex:
             case PageType::inner:
+            case PageType::deltaSplitInner:
                 assert(false); // only leafs  should come to here
             case PageType::deltaInsert:
             case PageType::deltaDelete:
@@ -251,7 +251,6 @@ namespace BwTree {
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
             ++failedConsolidate;
-            //consolidateLeafPage(pid); // TODO correct
         } else {
             ++successfulConsolidate;
             markForDeletion(previousNode);
@@ -259,8 +258,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterThan) {
-        Node<Key, Data> *node = startNode;
+    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *node, Key keysGreaterThan) {
         std::vector<std::tuple<Key, const Data *>> records;
         std::unordered_map<Key, bool> consideredKeys;
         Key stopAtKey;
@@ -326,6 +324,87 @@ namespace BwTree {
         int i = 0;
         for (auto &r : records) {
             newNode->records[i++] = r;
+        }
+        return newNode;
+    }
+
+
+
+    template<typename Key, typename Data>
+    void Tree<Key, Data>::consolidateInnerPage(PID pid, Node<Key, Data> *node) {
+        Node<Key, Data> *startNode = mapping[pid];
+        InnerNode<Key, Data> *newNode = createConsolidatedInnerPage(startNode);
+        auto c = newNode->nodeCount;
+        Node<Key, Data> *previousNode = startNode;
+
+        if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+            ++atomicCollisions;
+            ++failedConsolidate;
+        } else {
+            ++successfulConsolidate;
+            markForDeletion(previousNode);
+        }
+    }
+
+    template<typename Key, typename Data>
+    InnerNode<Key, Data> *Tree<Key, Data>::createConsolidatedInnerPage(Node<Key, Data> *node, Key keysGreaterThan) {
+        std::vector<std::tuple<Key, PID>> nodes;
+        std::unordered_map<Key, bool> consideredKeys;
+        Key stopAtKey;
+        bool pageSplit = false;
+        PID prev, next;
+        while (node != nullptr) {
+            switch (node->type) {
+                case PageType::inner: {
+                    auto node1 = static_cast<InnerNode<Key, Data> *>(node);
+                    for (int i = 0; i < node1->nodeCount; ++i) {
+                        auto &curKey = std::get<0>(node1->nodes[i]);
+                        if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
+                            nodes.push_back(node1->nodes[i]);
+                            consideredKeys[curKey] = true;
+                        }
+                    }
+                    prev = node1->prev;
+                    if (!pageSplit) {
+                        next = node1->next;
+                    }
+                    // found last element in the chain
+                    break;
+                }
+                case PageType::deltaIndex: {
+                    auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
+                    auto &curKey = node1->keyRight;
+                    if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
+                        nodes.push_back(std::make_tuple(curKey, node1->child));
+                        consideredKeys[curKey] = true;
+                    }
+                    node = node1->origin;
+                    continue;
+                }
+                case PageType::deltaSplitInner: {
+                    auto node1 = static_cast<DeltaSplit<Key, Data> *>(node);
+                    if (!pageSplit) {
+                        pageSplit = true;
+                        stopAtKey = node1->key;
+                        next = node1->sidelink;
+                    }
+                    node = node1->origin;
+                    continue;
+                };
+                default: {
+                    assert(false); //shouldn't occur here
+                }
+            }
+            node = nullptr;
+        }
+        // construct a new node
+        auto newNode = CreateInnerNode<Key, Data>(nodes.size(), next, prev);
+        std::sort(nodes.begin(), nodes.end(), [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
+            return std::get<0>(t1) < std::get<0>(t2);
+        });
+        int i = 0;
+        for (auto &r : nodes) {
+            newNode->nodes[i++] = r;
         }
         return newNode;
     }

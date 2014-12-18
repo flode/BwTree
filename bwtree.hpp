@@ -20,7 +20,8 @@ namespace BwTree {
         deltaInsert,
         deltaDelete,
         deltaIndex,
-        deltaSplit
+        deltaSplit,
+        deltaSplitInner
     };
 
     template<typename Key, typename Data>
@@ -157,6 +158,13 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
+    DeltaSplit<Key, Data> *CreateDeltaSplitInner(Node<Key, Data> *origin, Key splitKey, PID sidelink) {
+        DeltaSplit<Key, Data> *output = CreateDeltaSplit(origin, splitKey, sidelink);
+        output->type = PageType::deltaSplitInner;
+        return output;
+    }
+
+    template<typename Key, typename Data>
     DeltaIndex<Key, Data> *CreateDeltaIndex(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child) {
         size_t s = sizeof(DeltaIndex<Key, Data>);
         DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) malloc(s);
@@ -257,15 +265,23 @@ namespace BwTree {
             Node<Key, Data> *node = mapping[pid];
             switch (node->type) {
                 case PageType::inner: /* fallthrough */
+                case PageType::deltaSplitInner: /* fallthrough */
                 case PageType::deltaIndex:
-                    assert(false); // not implemented
+                    consolidateInnerPage(pid, node);
+                    break;
                 case PageType::leaf:
                 case PageType::deltaDelete: /* fallthrough */
                 case PageType::deltaSplit: /* fallthrough */
                 case PageType::deltaInsert:
+                    auto a = node->type;
                     consolidateLeafPage(pid, node);
+                    break;
             }
         }
+
+        void consolidateInnerPage(PID pid, Node<Key, Data> *node);
+
+        InnerNode<Key, Data> *createConsolidatedInnerPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan = std::numeric_limits<Key>::min());
 
         void consolidateLeafPage(PID pid, Node<Key, Data> *node);
 
@@ -277,6 +293,7 @@ namespace BwTree {
             Node<Key, Data> *node = mapping[pid];
             switch (node->type) {
                 case PageType::inner: /* fallthrough */
+                case PageType::deltaSplitInner: /* fallthrough */
                 case PageType::deltaIndex:
                     assert(false); // not implemented
                 case PageType::leaf:
