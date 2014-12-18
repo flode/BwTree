@@ -219,7 +219,7 @@ namespace BwTree {
             free(splitNode);
             free(newRightNode);
             mapping[newRightNodePID].store(nullptr);
-            splitLeafPage(pid);//TODO without recursion
+            //splitLeafPage(pid);//TODO without recursion // TODO does removing this prevent double splitting?
             return;
         } else {
             ++successfulSplit;
@@ -235,8 +235,8 @@ namespace BwTree {
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
-            consolidateLeafPage(pid);
             ++failedConsolidate;
+            //consolidateLeafPage(pid); // TODO correct
         } else {
             ++successfulConsolidate;
             markForDeletion(previousNode);
