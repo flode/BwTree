@@ -1,3 +1,5 @@
+#ifndef BWTREE_CPP
+#define BWTREE_CPP
 #include <unordered_map>
 #include "bwtree.hpp"
 #include <cassert>
@@ -372,4 +374,4 @@ namespace BwTree {
 
 
 
-
+#endif
