@@ -7,6 +7,7 @@
 #include <atomic>
 #include <iostream>
 #include <stack>
+#include <assert.h>
 
 namespace BwTree {
 
@@ -93,9 +94,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     struct DeltaIndex : DeltaNode<Key, Data> {
-        Key keyLeft;
-        Key keyRight;
-        PID sidelink;
+        Key keyLeft; // greater than
+        Key keyRight; // less or equal than
+        PID child;
     private:
         DeltaIndex() = delete;
 
@@ -155,31 +156,17 @@ namespace BwTree {
         return output;
     }
 
-    /* template <typename Key, typename Data>
-    class Node {
-        // inner node
-        std::vector<std::tuple<Key, PID>> nodes;
-        //std::size_t subnodeCount;
-        // leaf
-        std::vector<std::tuple<Key, Data*>> records;
-        //std::size_t recordCount;
-        PID prev;
-        PID next;
-    public:
-        Node(std::vector<std::tuple<Key, PID>> innerNodes, std::vector<std::tuple<Key, Data*>> leafs) : nodes(innerNodes),records(leafs) {}
-        ~Node() {
-                delete[] nodes;
-                delete[] records;
-        }
-
-
-    private:
-        // Will cause compiler error if you misuse this struct
-        Node(const Node&);
-        void operator=(const Node&);
-    };*/
-    /*template <typename Key, typename Data, std::size_t sCount> using InnerNode = Node<Key,Data,sCount,0>;
-    template <typename Key, typename Data, std::size_t rCount> using LeafNode = Node<Key,Data,0, rCount>;*/
+    template<typename Key, typename Data>
+    DeltaIndex<Key, Data> *CreateDeltaIndex(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child) {
+        size_t s = sizeof(DeltaIndex<Key, Data>);
+        DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) malloc(s);
+        output->type = PageType::deltaIndex;
+        output->origin = origin;
+        output->keyLeft = splitKeyLeft;
+        output->keyRight = splitKeyRight;
+        output->child = child;
+        return output;
+    }
 
     template<typename Key, typename Data>
     struct FindDataPageResult {
@@ -202,7 +189,7 @@ namespace BwTree {
                   parentNodes(parentNodes) {
         }
 
-        FindDataPageResult(PID pid, Node<Key, Data> *startNode, Node<Key, Data> *dataNode, Key key, Data const *data, std::stack<PID> const &needConsolidatePage, std::stack<PID> const &needSplitPage, std::stack<PID> const &parentNodes)
+        FindDataPageResult(PID pid, Node<Key, Data> *startNode, Node<Key, Data> *dataNode, Key key, Data const *data, std::stack<PID> const &&needConsolidatePage, std::stack<PID> const &&needSplitPage, std::stack<PID> const &&parentNodes)
                 : pid(pid),
                   startNode(startNode),
                   dataNode(dataNode),
@@ -265,18 +252,42 @@ namespace BwTree {
         FindDataPageResult<Key, Data> findDataPage(Key key);
 
         void consolidatePage(std::stack<PID> &&stack) {//TODO add to a list
-            consolidateLeafPage(std::move(stack));
+            PID pid = stack.top();
+            stack.pop();
+            Node<Key, Data> *node = mapping[pid];
+            switch (node->type) {
+                case PageType::inner: /* fallthrough */
+                case PageType::deltaIndex:
+                    assert(false); // not implemented
+                case PageType::leaf:
+                case PageType::deltaDelete: /* fallthrough */
+                case PageType::deltaSplit: /* fallthrough */
+                case PageType::deltaInsert:
+                    consolidateLeafPage(pid, node);
+            }
         }
 
-        void consolidateLeafPage(std::stack<PID> &&stack);
+        void consolidateLeafPage(PID pid, Node<Key, Data> *node);
 
-        Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan = 0);
+        Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan = std::numeric_limits<Key>::min());
 
         void splitPage(std::stack<PID> &&stack) {
-            splitLeafPage(stack);
+            PID pid = stack.top();
+            stack.pop();
+            Node<Key, Data> *node = mapping[pid];
+            switch (node->type) {
+                case PageType::inner: /* fallthrough */
+                case PageType::deltaIndex:
+                    assert(false); // not implemented
+                case PageType::leaf:
+                case PageType::deltaDelete: /* fallthrough */
+                case PageType::deltaSplit: /* fallthrough */
+                case PageType::deltaInsert:{};
+                    splitLeafPage(pid, node, std::move(stack));
+            }
         }
 
-        void splitLeafPage(std::stack<PID> &&stack);
+        void splitLeafPage(PID pid, Node <Key, Data> *node, std::stack<PID> &&stack);
 
         void markForDeletion(Node<Key, Data> *);
 

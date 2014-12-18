@@ -18,9 +18,9 @@ namespace BwTree {
             returnValue = const_cast<Data *>(res.data);
         }
         if (res.needSplitPage.size() > 0) {
-            splitLeafPage(std::move(res.parentNodes));
+            splitPage(std::move(res.needSplitPage));
         } else if (res.needConsolidatePage.size() > 0) {
-            consolidatePage(std::move(res.parentNodes));
+            consolidatePage(std::move(res.needConsolidatePage));
         }
         return returnValue;
     }
@@ -69,8 +69,19 @@ namespace BwTree {
                     needConsolidatePage = parentNodes;
                 }
                 switch (nextNode->type) {
-                    case PageType::deltaIndex:
-                        assert(false);//not implemented
+                    case PageType::deltaIndex: {
+                        auto node1 = static_cast<DeltaIndex<Key, Data> *>(nextNode);
+                        auto a = parentNodes.size();
+                        auto b = parentNodes.top();
+                        if (key > node1->keyLeft && key <= node1->keyRight) {
+                            nextPID = node1->child;
+                            nextNode = nullptr;
+                            break;
+                        } else {
+                            nextNode = node1->origin;
+                            continue;
+                        }
+                    };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
@@ -85,20 +96,21 @@ namespace BwTree {
                         }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
                         if (node1->recordCount > res && std::get<0>(node1->records[res]) == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->records[res]), needConsolidatePage, needSplitPage, parentNodes);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->records[res]), std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         } else {
                             if (res == node1->recordCount && node1->next != NotExistantPID) {
+                                parentNodes.pop();// to keep correct parent history upward
                                 nextPID = node1->next;
                                 nextNode = nullptr;
                                 continue;
                             }
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, needConsolidatePage, needSplitPage, parentNodes);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
                     };
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
                         if (std::get<0>(node1->record) == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->record), needConsolidatePage, needSplitPage, parentNodes);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->record), std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
@@ -107,7 +119,7 @@ namespace BwTree {
                     case PageType::deltaDelete: {
                         auto node1 = static_cast<DeltaDelete<Key, Data> *>(nextNode);
                         if (node1->key == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, needConsolidatePage, needSplitPage, parentNodes);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
@@ -118,6 +130,7 @@ namespace BwTree {
                         if (key > node1->key) {
                             nextPID = node1->sidelink;
                             nextNode = startNode = nullptr;
+                            parentNodes.pop();
                             continue;
                         }
                         nextNode = node1->origin;
@@ -138,6 +151,7 @@ namespace BwTree {
     void Tree<Key, Data>::insert(Key key, const Data *const record) {
         FindDataPageResult<Key, Data> res = findDataPage(key);
         switch (res.startNode->type) {
+            case PageType::deltaIndex:
             case PageType::inner:
                 assert(false); // only leafs  should come to here
             case PageType::deltaInsert:
@@ -152,9 +166,9 @@ namespace BwTree {
                     return;
                 } else {
                     if (res.needSplitPage.size() > 0) {
-                        splitLeafPage(std::move(res.parentNodes));
+                        splitPage(std::move(res.needSplitPage));
                     } else if (res.needConsolidatePage.size() > 0) {
-                        consolidatePage(std::move(res.parentNodes));
+                        consolidatePage(std::move(res.needConsolidatePage));
                     }
                     return;
                 }
@@ -190,10 +204,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::splitLeafPage(std::stack<PID> &&stack) {
-        //TODO how to prevent double split?
-        PID pid = stack.top();
-        stack.pop();
+    void Tree<Key, Data>::splitLeafPage(PID pid, Node<Key, Data> *node, std::stack<PID> &&stack) {
         Node<Key, Data> *startNode = mapping[pid];
 
         Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
@@ -205,24 +216,33 @@ namespace BwTree {
 
         DeltaSplit<Key, Data> *splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID);
 
-        auto c = newRightNode->recordCount; auto b = tempNode->recordCount;
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
             ++failedSplit;
             free(splitNode);
             free(newRightNode);
             mapping[newRightNodePID].store(nullptr);
-            //splitLeafPage(pid);//TODO without recursion // TODO does removing this prevent double splitting?
             return;
         } else {
             ++successfulSplit;
         }
+
+        PID parentPid = stack.top();
+        Node<Key, Data> *parentNode = mapping[parentPid];
+        assert(parentNode->type == PageType::inner || parentNode->type == PageType::deltaIndex);
+        while (true) {
+            DeltaIndex<Key, Data> *indexNode = CreateDeltaIndex(parentNode, Kp, std::get<0>(newRightNode->records[newRightNode->recordCount - 1]), newRightNodePID);
+            if (!mapping[parentPid].compare_exchange_weak(parentNode, indexNode)) {
+                free(indexNode);
+                ++atomicCollisions;
+            } else {
+                break;
+            }
+        }
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::consolidateLeafPage(std::stack<PID> &&stack) {
-        PID pid = stack.top();
-        stack.pop();
+    void Tree<Key, Data>::consolidateLeafPage(PID pid, Node<Key, Data> *node) {
         Node<Key, Data> *startNode = mapping[pid];
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
         auto c = newNode->recordCount;
@@ -348,20 +368,6 @@ namespace BwTree {
         deletedNodes[index] = node;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif
