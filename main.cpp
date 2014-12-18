@@ -56,6 +56,10 @@ void randomThreadTest() {
         }
     }
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
+    std::cout << "successful consolidation: " << tree.getSuccessfulConsolidate() << std::endl;
+    std::cout << "failed consolidation: " << tree.getFailedConsolidate() << std::endl;
+    std::cout << "successful split: " << tree.getSuccessfulSplit() << std::endl;
+    std::cout << "failed split: " << tree.getFailedSplit() << std::endl;
 }
 
 int main() {
