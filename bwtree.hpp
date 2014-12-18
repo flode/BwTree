@@ -198,8 +198,8 @@ namespace BwTree {
         std::atomic<unsigned long> failedSplit{0};
 
         struct Settings {
-            std::size_t ConsolidateLeafPage = 1000;
-            std::size_t SplitLeafPage = 3000;
+            std::size_t ConsolidateLeafPage = 8;
+            std::size_t SplitLeafPage = 14;
         };
 
         constexpr static Settings settings{};
