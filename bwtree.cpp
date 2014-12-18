@@ -28,7 +28,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     template<typename T>
     size_t Tree<Key, Data>::binarySearch(T array, std::size_t length, Key key) {
-        //std cpp code upper_bound
+        //std cpp code lower_bound
         std::size_t first = 0;
         std::size_t i;
         std::size_t count, step;
@@ -37,7 +37,7 @@ namespace BwTree {
             i = first;
             step = count / 2;
             i += step;
-            if (!(key < std::get<0>(array[i]))) {
+            if (std::get<0>(array[i]) < key) {
                 first = ++i;
                 count -= step + 1;
             } else {
@@ -84,8 +84,8 @@ namespace BwTree {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
-                        if (res != 0 && std::get<0>(node1->records[res - 1]) == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->records[res - 1]), needConsolidatePage, needSplitPage, parentNodes);
+                        if (node1->recordCount > res && std::get<0>(node1->records[res]) == key) {
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->records[res]), needConsolidatePage, needSplitPage, parentNodes);
                         } else {
                             if (res == node1->recordCount && node1->next != NotExistantPID) {
                                 nextPID = node1->next;
@@ -239,7 +239,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan) {
+    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterThan) {
         Node<Key, Data> *node = startNode;
         std::vector<std::tuple<Key, const Data *>> records;
         std::unordered_map<Key, bool> consideredKeys;
@@ -252,7 +252,7 @@ namespace BwTree {
                     auto node1 = static_cast<Leaf<Key, Data> *>(node);
                     for (int i = 0; i < node1->recordCount; ++i) {
                         auto &curKey = std::get<0>(node1->records[i]);
-                        if (curKey >= keysGreaterEqualThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
+                        if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
                             records.push_back(node1->records[i]);
                             consideredKeys[curKey] = true;
                         }
@@ -267,7 +267,7 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey >= keysGreaterEqualThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
+                    if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
                         records.push_back(node1->record);
                         consideredKeys[curKey] = true;
                     }
