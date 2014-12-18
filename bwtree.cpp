@@ -215,11 +215,14 @@ namespace BwTree {
         auto c = newRightNode->recordCount; auto b = tempNode->recordCount;
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
+            ++failedSplit;
             free(splitNode);
             free(newRightNode);
             mapping[newRightNodePID].store(nullptr);
             splitLeafPage(pid);//TODO without recursion
             return;
+        } else {
+            ++successfulSplit;
         }
     }
 
@@ -233,7 +236,9 @@ namespace BwTree {
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             ++atomicCollisions;
             consolidateLeafPage(pid);
+            ++failedConsolidate;
         } else {
+            ++successfulConsolidate;
             markForDeletion(previousNode);
             if (newNode->recordCount > settings.SplitLeafPage) {
                 splitLeafPage(pid);
@@ -303,7 +308,6 @@ namespace BwTree {
         }
         // construct a new node
         auto newNode = CreateLeaf<Key, Data>(records.size(), next, prev);
-        auto &a = records[0];
         std::sort(records.begin(), records.end(), [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
             return std::get<0>(t1) < std::get<0>(t2);
         });

@@ -192,6 +192,10 @@ namespace BwTree {
         //PID mappingSize = 2048;
         std::atomic<PID> mappingNext{0};
         std::atomic<unsigned long> atomicCollisions{0};
+        std::atomic<unsigned long> successfulConsolidate{0};
+        std::atomic<unsigned long> failedConsolidate{0};
+        std::atomic<unsigned long> successfulSplit{0};
+        std::atomic<unsigned long> failedSplit{0};
 
         struct Settings {
             std::size_t ConsolidateLeafPage = 1000;
@@ -259,6 +263,22 @@ namespace BwTree {
 
         unsigned long const getAtomicCollisions() const {
             return atomicCollisions;
+        }
+
+        unsigned long const getSuccessfulConsolidate() const {
+            return successfulConsolidate;
+        }
+
+        unsigned long const getFailedConsolidate() const {
+            return failedConsolidate;
+        }
+
+        unsigned long const getSuccessfulSplit() const {
+            return successfulSplit;
+        }
+
+        unsigned long const getFailedSplit() const {
+            return failedSplit;
         }
     };
 }
