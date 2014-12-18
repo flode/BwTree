@@ -6,13 +6,14 @@
 #include <mutex>
 #include <atomic>
 #include <iostream>
+#include <stack>
 
 namespace BwTree {
 
     using PID = std::size_t;
     constexpr PID NotExistantPID = std::numeric_limits<PID>::max();
 
-    enum class PageType : std::int8_t  {
+    enum class PageType : std::int8_t {
         leaf,
         inner,
         deltaInsert,
@@ -21,26 +22,27 @@ namespace BwTree {
         deltaSplit
     };
 
-    template <typename Key, typename Data>
+    template<typename Key, typename Data>
     struct Node {
         PageType type;
     };
 
-    template <typename Key, typename Data>
-    struct Leaf : Node<Key,Data> {
+    template<typename Key, typename Data>
+    struct Leaf : Node<Key, Data> {
         PID prev;
         PID next;
         std::size_t recordCount;
         // has to be last member for dynamic malloc() !!!
-        std::tuple<Key, const Data*> records[];
+        std::tuple<Key, const Data *> records[];
     private:
         Leaf() = delete;
+
         ~Leaf() = delete;
     };
 
 
-    template <typename Key, typename Data>
-    struct InnerNode : Node<Key,Data> {
+    template<typename Key, typename Data>
+    struct InnerNode : Node<Key, Data> {
         PID prev;
         PID next;
         std::size_t nodeCount;
@@ -48,57 +50,62 @@ namespace BwTree {
         std::tuple<Key, PID> nodes[];
     private:
         InnerNode() = delete;
+
         ~InnerNode() = delete;
     };
 
-    template <typename Key, typename Data>
-    struct DeltaNode : Node<Key,Data> {
-        Node<Key,Data>* origin;
+    template<typename Key, typename Data>
+    struct DeltaNode : Node<Key, Data> {
+        Node<Key, Data> *origin;
     private:
         DeltaNode() = delete;
+
         ~DeltaNode() = delete;
     };
 
-    template <typename Key, typename Data>
-    struct DeltaInsert : DeltaNode<Key,Data> {
-        std::tuple<Key, const Data*> record;
+    template<typename Key, typename Data>
+    struct DeltaInsert : DeltaNode<Key, Data> {
+        std::tuple<Key, const Data *> record;
     private:
         DeltaInsert() = delete;
+
         ~DeltaInsert() = delete;
     };
 
-    template <typename Key, typename Data>
-    struct DeltaDelete : DeltaNode<Key,Data> {
+    template<typename Key, typename Data>
+    struct DeltaDelete : DeltaNode<Key, Data> {
         Key key;
     private:
         DeltaDelete() = delete;
+
         ~DeltaDelete() = delete;
     };
 
-    template <typename Key, typename Data>
-    struct DeltaSplit : DeltaNode<Key,Data> {
+    template<typename Key, typename Data>
+    struct DeltaSplit : DeltaNode<Key, Data> {
         Key key;
         PID sidelink;
     private:
         DeltaSplit() = delete;
+
         ~DeltaSplit() = delete;
     };
 
-    template <typename Key, typename Data>
-    struct DeltaIndex : DeltaNode<Key,Data> {
+    template<typename Key, typename Data>
+    struct DeltaIndex : DeltaNode<Key, Data> {
         Key keyLeft;
         Key keyRight;
         PID sidelink;
     private:
         DeltaIndex() = delete;
+
         ~DeltaIndex() = delete;
     };
 
-    template <typename Key, typename Data>
-    InnerNode<Key,Data>* CreateInnerNode(std::size_t size, PID next, PID prev)
-    {
-        size_t s = sizeof (InnerNode<Key,Data>) - sizeof (InnerNode<Key,Data>::nodes);
-        InnerNode<Key,Data> *output = (InnerNode<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key,PID>));
+    template<typename Key, typename Data>
+    InnerNode<Key, Data> *CreateInnerNode(std::size_t size, PID next, PID prev) {
+        size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
+        InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, PID>));
         output->nodeCount = size;
         output->type = PageType::inner;
         output->next = next;
@@ -106,11 +113,10 @@ namespace BwTree {
         return output;
     }
 
-    template <typename Key, typename Data>
-    Leaf<Key,Data>* CreateLeaf(std::size_t size, PID next, PID prev)
-    {
-        size_t s = sizeof (Leaf<Key,Data>) - sizeof (Leaf<Key,Data>::records);
-        Leaf<Key,Data> *output = (Leaf<Key,Data>*) malloc(s + size * sizeof(std::tuple<Key, const Data*>));
+    template<typename Key, typename Data>
+    Leaf<Key, Data> *CreateLeaf(std::size_t size, PID next, PID prev) {
+        size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
+        Leaf<Key, Data> *output = (Leaf<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, const Data *>));
         output->recordCount = size;
         output->type = PageType::leaf;
         output->next = next;
@@ -118,33 +124,30 @@ namespace BwTree {
         return output;
     }
 
-    template <typename Key, typename Data>
-    DeltaInsert<Key,Data>* CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data*> record)
-    {
-        size_t s = sizeof (DeltaInsert<Key,Data>);
-        DeltaInsert<Key,Data> *output = (DeltaInsert<Key,Data>*) malloc(s);
+    template<typename Key, typename Data>
+    DeltaInsert<Key, Data> *CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data *> record) {
+        size_t s = sizeof(DeltaInsert<Key, Data>);
+        DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) malloc(s);
         output->type = PageType::deltaInsert;
         output->origin = origin;
         output->record = record;
         return output;
     }
 
-    template <typename Key, typename Data>
-    DeltaDelete<Key,Data>* CreateDeltaDelete(Node<Key, Data> *origin, Key key)
-    {
-        size_t s = sizeof (DeltaDelete<Key,Data>);
-        DeltaDelete<Key,Data> *output = (DeltaDelete<Key,Data>*) malloc(s);
+    template<typename Key, typename Data>
+    DeltaDelete<Key, Data> *CreateDeltaDelete(Node<Key, Data> *origin, Key key) {
+        size_t s = sizeof(DeltaDelete<Key, Data>);
+        DeltaDelete<Key, Data> *output = (DeltaDelete<Key, Data> *) malloc(s);
         output->type = PageType::deltaDelete;
         output->origin = origin;
         output->key = key;
         return output;
     }
 
-    template <typename Key, typename Data>
-    DeltaSplit<Key,Data>* CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink)
-    {
-        size_t s = sizeof (DeltaSplit<Key,Data>);
-        DeltaSplit<Key,Data> *output = (DeltaSplit<Key,Data>*) malloc(s);
+    template<typename Key, typename Data>
+    DeltaSplit<Key, Data> *CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink) {
+        size_t s = sizeof(DeltaSplit<Key, Data>);
+        DeltaSplit<Key, Data> *output = (DeltaSplit<Key, Data> *) malloc(s);
         output->type = PageType::deltaSplit;
         output->origin = origin;
         output->key = splitKey;
@@ -178,15 +181,48 @@ namespace BwTree {
     /*template <typename Key, typename Data, std::size_t sCount> using InnerNode = Node<Key,Data,sCount,0>;
     template <typename Key, typename Data, std::size_t rCount> using LeafNode = Node<Key,Data,0, rCount>;*/
 
+    template<typename Key, typename Data>
+    struct FindDataPageResult {
+        PID pid;
+        Node<Key, Data> *startNode;
+        Node<Key, Data> *dataNode;
+        Key key;
+        const Data *data;
+        std::stack<PID> needConsolidatePage;
+        std::stack<PID> needSplitPage;
+        std::stack<PID> parentNodes;
 
-    template <typename Key, typename Data>
+
+        FindDataPageResult(PID pid, Node<Key, Data> *startNode, Node<Key, Data> *dataNode, std::stack<PID> const &needConsolidatePage, std::stack<PID> const &needSplitPage, std::stack<PID> const &parentNodes)
+                : pid(pid),
+                  startNode(startNode),
+                  dataNode(dataNode),
+                  needConsolidatePage(needConsolidatePage),
+                  needSplitPage(needSplitPage),
+                  parentNodes(parentNodes) {
+        }
+
+        FindDataPageResult(PID pid, Node<Key, Data> *startNode, Node<Key, Data> *dataNode, Key key, Data const *data, std::stack<PID> const &needConsolidatePage, std::stack<PID> const &needSplitPage, std::stack<PID> const &parentNodes)
+                : pid(pid),
+                  startNode(startNode),
+                  dataNode(dataNode),
+                  key(key),
+                  data(data),
+                  needConsolidatePage(needConsolidatePage),
+                  needSplitPage(needSplitPage),
+                  parentNodes(parentNodes) {
+        }
+    };
+
+
+    template<typename Key, typename Data>
     class Tree {
         /**
         * Special Invariant:
         * - Leaf nodes always contain special infinity value at the right end for the last pointer
         */
         PID root;
-        std::vector<std::atomic<Node<Key,Data>*>> mapping{100000};
+        std::vector<std::atomic<Node<Key, Data> *>> mapping{100000};
         //std::atomic<Node<Key,Data>*> mapping[2048];
         //std::array<std::atomic<Node<Key,Data>*>,2048> mapping{};
         //PID mappingSize = 2048;
@@ -205,14 +241,14 @@ namespace BwTree {
         constexpr static Settings settings{};
 
         //std::mutex insertMutex;
-        std::array<Node<Key,Data>*,100000> deletedNodes;
+        std::array<Node<Key, Data> *, 100000> deletedNodes;
         std::atomic<std::size_t> deleteNodeNext{0};
 
-        Node<Key,Data>* PIDToNodePtr(PID node) {
+        Node<Key, Data> *PIDToNodePtr(PID node) {
             return mapping[node];
         }
 
-        PID newNode(Node<Key,Data>* node) {
+        PID newNode(Node<Key, Data> *node) {
             //std::lock_guard<std::mutex> lock(insertMutex);
             PID nextPID = mappingNext++;
             if (nextPID >= mapping.size()) {
@@ -226,19 +262,23 @@ namespace BwTree {
         /**
         * page id of the leaf node, first node in the chain (corresponds to PID), actual node where the data was found
         */
-        std::tuple<PID, Node<Key,Data>*, Node<Key,Data>*> findDataPage(Key key);
+        FindDataPageResult<Key, Data> findDataPage(Key key);
 
-        void consolidatePage(PID pid) {//TODO add to a list
-            consolidateLeafPage(pid);
+        void consolidatePage(std::stack<PID> &&stack) {//TODO add to a list
+            consolidateLeafPage(std::move(stack));
         }
 
-        void consolidateLeafPage(PID pid);
+        void consolidateLeafPage(std::stack<PID> &&stack);
 
-        Leaf<Key,Data> *createConsolidatedLeafPage(Node<Key,Data>* startNode, Key keysGreaterEqualThan = 0);
+        Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan = 0);
 
-        void splitLeafPage(PID pid);
+        void splitPage(std::stack<PID> &&stack) {
+            splitLeafPage(stack);
+        }
 
-        void markForDeletion(Node<Key,Data>*);
+        void splitLeafPage(std::stack<PID> &&stack);
+
+        void markForDeletion(Node<Key, Data> *);
 
         template<typename T>
         static size_t binarySearch(T array, std::size_t length, Key key);
@@ -246,20 +286,20 @@ namespace BwTree {
     public:
 
         Tree() {
-            Node<Key, Data> *datanode = CreateLeaf<Key,Data>(0, NotExistantPID, NotExistantPID);
+            Node<Key, Data> *datanode = CreateLeaf<Key, Data>(0, NotExistantPID, NotExistantPID);
             PID dataNodePID = newNode(datanode);
-            InnerNode<Key, Data> *innerNode = CreateInnerNode<Key,Data>(1, NotExistantPID, NotExistantPID);
-            innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(),dataNodePID);
+            InnerNode<Key, Data> *innerNode = CreateInnerNode<Key, Data>(1, NotExistantPID, NotExistantPID);
+            innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(), dataNodePID);
             root = newNode(innerNode);
         }
 
         ~Tree();
 
-        void insert(Key key, const Data * const record);
+        void insert(Key key, const Data *const record);
 
         void deleteKey(Key key);
 
-        Data* search(Key key);
+        Data *search(Key key);
 
         unsigned long const getAtomicCollisions() const {
             return atomicCollisions;
@@ -285,4 +325,5 @@ namespace BwTree {
 
 // Include the cpp file so that the templates can be correctly compiled
 #include "bwtree.cpp"
+
 #endif

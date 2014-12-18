@@ -1,5 +1,6 @@
 #ifndef BWTREE_CPP
 #define BWTREE_CPP
+
 #include <unordered_map>
 #include "bwtree.hpp"
 #include <cassert>
@@ -9,38 +10,20 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     Data *Tree<Key, Data>::search(Key key) {
-        PID pid;
-        Node<Key, Data> *startNode;
-        Node<Key, Data> *dataNode;
-        std::tie(pid, startNode, dataNode) = findDataPage(key);
-        if (dataNode == nullptr) {
-            return nullptr;
+        FindDataPageResult<Key, Data> res = findDataPage(key);
+        Data *returnValue;
+        if (res.dataNode == nullptr) {
+            returnValue = nullptr;
+        } else {
+            returnValue = const_cast<Data *>(res.data);
         }
-        switch (dataNode->type) {
-            case PageType::leaf: {
-                auto node1 = static_cast<Leaf<Key, Data> *>(dataNode);
-                auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
-                if (res != 0 && res != std::numeric_limits<std::size_t>::max() && (std::get<0>(node1->records[res - 1]) == key)) {
-                    return const_cast<Data *>(std::get<1>(node1->records[res - 1]));
-                } else {
-                    assert(false); //value should exist at this point
-                }
-            }
-            case PageType::deltaInsert: {
-                auto node1 = static_cast<DeltaInsert<Key, Data> *>(dataNode);
-                if (std::get<0>(node1->record) == key) {
-                    return const_cast<Data *>(std::get<1>(node1->record));
-                }
-            }
-            case PageType::deltaDelete:
-                assert(false);//shouldn't occur here
-            default: {
-                assert(false);
-            }
+        if (res.needSplitPage.size() > 0) {
+            splitLeafPage(std::move(res.parentNodes));
+        } else if (res.needConsolidatePage.size() > 0) {
+            consolidatePage(std::move(res.parentNodes));
         }
-        assert(false); //here a result should always be found
+        return returnValue;
     }
-
 
     template<typename Key, typename Data>
     template<typename T>
@@ -64,23 +47,26 @@ namespace BwTree {
         return first;
     }
 
-
     template<typename Key, typename Data>
-    std::tuple<PID, Node<Key, Data> *, Node<Key, Data> *> Tree<Key, Data>::findDataPage(Key key) {
+    FindDataPageResult<Key, Data> Tree<Key, Data>::findDataPage(Key key) {
         PID nextPID = root;
         std::size_t debugTMPCheck = 0;
+        std::stack<PID> needConsolidatePage;
+        std::stack<PID> needSplitPage;
+        std::stack<PID> parentNodes;
         while (nextPID != NotExistantPID) {
             if (debugTMPCheck++ > 100) {
                 assert(true);
                 std::cout << "test" << std::endl;
             }
             std::size_t pageDepth = 0;
+            parentNodes.push(nextPID);
             Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
             Node<Key, Data> *nextNode = startNode;
             while (nextNode != nullptr) {
                 ++pageDepth;
-                if (pageDepth == settings.ConsolidateLeafPage) {//TODO save for later
-                    consolidateLeafPage(nextPID);
+                if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0) {//TODO save for later
+                    needConsolidatePage = parentNodes;
                 }
                 switch (nextNode->type) {
                     case PageType::deltaIndex:
@@ -88,28 +74,31 @@ namespace BwTree {
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
-                        nextNode = nullptr;
                         nextPID = std::get<1>(node1->nodes[res]);
+                        nextNode = nullptr;
                         break;
                     };
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
+                        if (node1->recordCount > settings.SplitLeafPage && needSplitPage.size() == 0) {
+                            needSplitPage = parentNodes;
+                        }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
                         if (res != 0 && std::get<0>(node1->records[res - 1]) == key) {
-                            return std::make_tuple(nextPID, startNode, nextNode);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->records[res - 1]), needConsolidatePage, needSplitPage, parentNodes);
                         } else {
                             if (res == node1->recordCount && node1->next != NotExistantPID) {
                                 nextPID = node1->next;
                                 nextNode = nullptr;
                                 continue;
                             }
-                            return std::make_tuple(nextPID, startNode, nullptr);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, needConsolidatePage, needSplitPage, parentNodes);
                         }
                     };
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
                         if (std::get<0>(node1->record) == key) {
-                            return std::make_tuple(nextPID, startNode, nextNode);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->record), needConsolidatePage, needSplitPage, parentNodes);
                         }
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
@@ -118,7 +107,7 @@ namespace BwTree {
                     case PageType::deltaDelete: {
                         auto node1 = static_cast<DeltaDelete<Key, Data> *>(nextNode);
                         if (node1->key == key) {
-                            return std::make_tuple(nextPID, startNode, nullptr);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, needConsolidatePage, needSplitPage, parentNodes);
                         }
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
@@ -147,25 +136,28 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::insert(Key key, const Data *const record) {
-        PID pid;
-        Node<Key, Data> *startNode;
-        Node<Key, Data> *dataNode;
-        std::tie(pid, startNode, dataNode) = findDataPage(key);
-        switch (startNode->type) {
+        FindDataPageResult<Key, Data> res = findDataPage(key);
+        switch (res.startNode->type) {
             case PageType::inner:
                 assert(false); // only leafs  should come to here
             case PageType::deltaInsert:
             case PageType::deltaDelete:
             case PageType::deltaSplit:
             case PageType::leaf: {
-                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(startNode, std::make_tuple(key, record));
-                if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(res.startNode, std::make_tuple(key, record));
+                if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
                     free(newNode);
                     insert(key, record);
                     return;
+                } else {
+                    if (res.needSplitPage.size() > 0) {
+                        splitLeafPage(std::move(res.parentNodes));
+                    } else if (res.needConsolidatePage.size() > 0) {
+                        consolidatePage(std::move(res.parentNodes));
+                    }
+                    return;
                 }
-                return;
             }
             default:
                 assert(false); //shouldn't happen
@@ -176,19 +168,16 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::deleteKey(Key key) {
-        PID pid;
-        Node<Key, Data> *startNode;
-        Node<Key, Data> *dataNode;
-        std::tie(pid, startNode, dataNode) = findDataPage(key);
-        if (dataNode == nullptr) {
+        FindDataPageResult<Key, Data> res = findDataPage(key);
+        if (res.dataNode == nullptr) {
             return;
         }
-        switch (startNode->type) {
+        switch (res.startNode->type) {
             case PageType::deltaDelete:
             case PageType::deltaInsert:
             case PageType::leaf: {
-                DeltaDelete<Key, Data> *newDeleteNode = CreateDeltaDelete<Key, Data>(startNode, key);
-                if (!mapping[pid].compare_exchange_weak(startNode, newDeleteNode)) {
+                DeltaDelete<Key, Data> *newDeleteNode = CreateDeltaDelete<Key, Data>(res.startNode, key);
+                if (!mapping[res.pid].compare_exchange_weak(res.startNode, newDeleteNode)) {
                     ++atomicCollisions;
                     free(newDeleteNode);
                     deleteKey(key);//TODO without recursion
@@ -201,8 +190,10 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::splitLeafPage(PID pid) {
+    void Tree<Key, Data>::splitLeafPage(std::stack<PID> &&stack) {
         //TODO how to prevent double split?
+        PID pid = stack.top();
+        stack.pop();
         Node<Key, Data> *startNode = mapping[pid];
 
         Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
@@ -229,7 +220,9 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::consolidateLeafPage(PID pid) {
+    void Tree<Key, Data>::consolidateLeafPage(std::stack<PID> &&stack) {
+        PID pid = stack.top();
+        stack.pop();
         Node<Key, Data> *startNode = mapping[pid];
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
         auto c = newNode->recordCount;
@@ -242,9 +235,6 @@ namespace BwTree {
         } else {
             ++successfulConsolidate;
             markForDeletion(previousNode);
-            if (newNode->recordCount > settings.SplitLeafPage) {
-                splitLeafPage(pid);
-            }
         }
     }
 

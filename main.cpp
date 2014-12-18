@@ -13,7 +13,7 @@ void randomThreadTest() {
 
     std::vector<std::thread> threads;
     constexpr int numberOfThreads = 4;
-    constexpr int numberValues = numberOfThreads * 30000;
+    constexpr int numberValues = numberOfThreads * 10000;
 
 
     std::default_random_engine d;
@@ -75,8 +75,16 @@ int main() {
     /**
     * Tasks for next week (11.12.2014)
     * - fix random bugs that occur with threads :( - OK!
+    * - check that all B+ properties hold, linked, additional pointer
     * - manuel split of nodes
     * - consolidate inner nodes as well
+    */
+    /**
+    * Tasks for until 6/january
+    * - completet split page, propagate split key to parent
+    * - consolidate inner nodes
+    * - different consolidation, dependant on depth in the tree
+    * - generate a lot of numbers
     */
     Tree<unsigned long, unsigned> a;
     std::unordered_map<unsigned long, unsigned> map;
