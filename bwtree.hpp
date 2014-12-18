@@ -186,7 +186,7 @@ namespace BwTree {
         * - Leaf nodes always contain special infinity value at the right end for the last pointer
         */
         PID root;
-        std::vector<std::atomic<Node<Key,Data>*>> mapping{4096};
+        std::vector<std::atomic<Node<Key,Data>*>> mapping{100000};
         //std::atomic<Node<Key,Data>*> mapping[2048];
         //std::array<std::atomic<Node<Key,Data>*>,2048> mapping{};
         //PID mappingSize = 2048;
@@ -201,7 +201,7 @@ namespace BwTree {
         constexpr static Settings settings{};
 
         //std::mutex insertMutex;
-        std::array<Node<Key,Data>*,10000> deletedNodes;
+        std::array<Node<Key,Data>*,100000> deletedNodes;
         std::atomic<std::size_t> deleteNodeNext{0};
 
         Node<Key,Data>* PIDToNodePtr(PID node) {
