@@ -492,17 +492,18 @@ namespace BwTree {
     unsigned Epoque<Key, Data>::enterEpoque() {
         std::lock_guard<std::mutex> guard(mutex);
         if (deleteNodeNext[newestEpoque] == 0) {
+            ++epoques[newestEpoque];
             return newestEpoque;
         }
-        unsigned e = (++newestEpoque) % epoquescount; // TODO doesn't change newestEpoque
-        if (e == oldestEpoque) {
-            std::cout << e << " " << newestEpoque << " " << oldestEpoque;
+        newestEpoque.store((newestEpoque + 1) % epoquescount); // TODO doesn't change newestEpoque
+        if (newestEpoque == oldestEpoque) {
+            std::cout << " " << newestEpoque << " " << oldestEpoque;
             //return e;
         }
-        assert(e != oldestEpoque);// not thread safe
-        epoques[e]++;
-        deleteNodeNext[e].store(0);
-        return e;
+        assert(newestEpoque != oldestEpoque);// not thread safe
+        epoques[newestEpoque].store(1);
+        deleteNodeNext[newestEpoque].store(0);
+        return newestEpoque;
     }
 }
 

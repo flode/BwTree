@@ -223,6 +223,10 @@ namespace BwTree {
         std::mutex mutex;
 
     public:
+        Epoque() {
+            epoques[newestEpoque].store(0);
+            deleteNodeNext[newestEpoque].store(0);
+        }
         unsigned enterEpoque();
 
         void leaveEpoque(unsigned e);
