@@ -4,21 +4,24 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <thread>
+#include <sys/time.h>
 #include "bwtree.hpp"
 
 using namespace BwTree;
 
 void randomThreadTest() {
+    struct timeval starttime;
+    gettimeofday(&starttime, NULL);
     Tree<unsigned long long, unsigned long long> tree;
 
     std::vector<std::thread> threads;
     constexpr int numberOfThreads = 4;
-    constexpr int numberValues = numberOfThreads * 10000;
+    constexpr int numberValues = 10000;//numberOfThreads * 30000;
 
 
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned long long> rand(0, std::numeric_limits<unsigned long long>::max());
-    std::array<unsigned long long,numberValues> values;
+    std::array<unsigned long long, numberValues> values;
     std::unordered_set<unsigned long long> keys;
     for (int i = 0; i < numberValues; ++i) {
         unsigned long long val;
@@ -38,8 +41,8 @@ void randomThreadTest() {
             for (int i = start; i < start + delta; ++i) {
                 auto &v = t_values[i];
                 auto r = tree.search(v);
-                if (r == nullptr || *r!=v) {
-                    std::cout << "wrong value inner!! " << (r== nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+                if (r == nullptr || *r != v) {
+                    std::cout << "wrong value inner!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
                 }
             }
         }));
@@ -51,10 +54,17 @@ void randomThreadTest() {
     }
     for (auto &v : values) {
         auto r = tree.search(v);
-        if (r == nullptr || *r!=v) {
-            std::cout << "wrong value!! " << (r== nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+        if (r == nullptr || *r != v) {
+            std::cout << "wrong value!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
         }
     }
+
+    struct timeval end;
+    gettimeofday(&end, NULL);
+    double diff = (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001;
+    std::cout << "Elapsed time in s: " << diff << std::endl;
+
+
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
     std::cout << "successful consolidation: " << tree.getSuccessfulConsolidate() << std::endl;
     std::cout << "failed consolidation: " << tree.getFailedConsolidate() << std::endl;
