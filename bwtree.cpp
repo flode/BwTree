@@ -11,6 +11,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     Data *Tree<Key, Data>::search(Key key) {
+        unsigned e = epoque.enterEpoque();
         FindDataPageResult<Key, Data> res = findDataPage(key);
         Data *returnValue;
         if (res.dataNode == nullptr) {
@@ -23,6 +24,7 @@ namespace BwTree {
         } else if (res.needConsolidatePage.size() > 0) {
             consolidatePage(std::move(res.needConsolidatePage));
         }
+        epoque.leaveEpoque(e);
         return returnValue;
     }
 
@@ -149,6 +151,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::insert(Key key, const Data *const record) {
+        unsigned e = epoque.enterEpoque();
         FindDataPageResult<Key, Data> res = findDataPage(key);
         switch (res.startNode->type) {
             case PageType::deltaIndex:
@@ -171,6 +174,7 @@ namespace BwTree {
                     } else if (res.needConsolidatePage.size() > 0) {
                         consolidatePage(std::move(res.needConsolidatePage));
                     }
+                    epoque.leaveEpoque(e);
                     return;
                 }
             }
@@ -183,8 +187,10 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::deleteKey(Key key) {
+        unsigned e = epoque.enterEpoque();
         FindDataPageResult<Key, Data> res = findDataPage(key);
         if (res.dataNode == nullptr) {
+            epoque.leaveEpoque(e);
             return;
         }
         switch (res.startNode->type) {
@@ -198,6 +204,7 @@ namespace BwTree {
                     deleteKey(key);//TODO without recursion
                     return;
                 }
+                epoque.leaveEpoque(e);
                 return;
             }
         }
@@ -254,7 +261,7 @@ namespace BwTree {
             ++failedConsolidate;
         } else {
             ++successfulConsolidate;
-            markForDeletion(previousNode);
+            epoque.markForDeletion(previousNode);
         }
     }
 
@@ -330,7 +337,6 @@ namespace BwTree {
     }
 
 
-
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateInnerPage(PID pid, Node<Key, Data> *node) {
         Node<Key, Data> *startNode = mapping[pid];
@@ -343,7 +349,7 @@ namespace BwTree {
             ++failedConsolidate;
         } else {
             ++successfulConsolidate;
-            markForDeletion(previousNode);
+            epoque.markForDeletion(previousNode);
         }
     }
 
@@ -410,7 +416,7 @@ namespace BwTree {
         for (auto &r : nodes) {
             newNode->nodes[i++] = r;
         }
-        std::get<0>(newNode->nodes[newNode->nodeCount-1]) = std::numeric_limits<Key>::max();
+        std::get<0>(newNode->nodes[newNode->nodeCount - 1]) = std::numeric_limits<Key>::max();
         return newNode;
     }
 
@@ -445,11 +451,58 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::markForDeletion(Node<Key, Data> *node) {
-        std::size_t index = deleteNodeNext++;
-        if (index == deletedNodes.size())
+    void Epoque<Key, Data>::markForDeletion(Node<Key, Data> *node) {
+        std::lock_guard<std::mutex> guard(mutex);
+        unsigned e = newestEpoque % epoquescount;
+        std::size_t index = deleteNodeNext[e]++;
+        if (index == deletedNodes[e].size())
             assert(false); //too many deleted nodes
-        deletedNodes[index] = node;
+        deletedNodes[e].at(index) = node;
+    }
+
+    template<typename Key, typename Data>
+    void Epoque<Key, Data>::leaveEpoque(unsigned e) {
+        std::lock_guard<std::mutex> guard(mutex);
+        unsigned rest = --epoques[e];
+        unsigned oldestEpoque = this->oldestEpoque;
+        if (rest == 0) {
+            unsigned lastEpoque = oldestEpoque;
+            std::vector<Node<Key, Data> *> nodes;
+            for (int i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
+                if (epoques[i] == 0) {
+                    for (int j = 0; j < deleteNodeNext[i]; ++j) {
+                        nodes.push_back(deletedNodes[i].at(j));
+                    }
+                    lastEpoque = (i + 1) % epoquescount;
+                } else {
+                    break;
+                }
+            }
+            if (this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque)) {
+                for (auto &node : nodes) {
+                    free(node);
+                }
+            } else {
+                std::cerr << "failed";
+            }
+        }
+    }
+
+    template<typename Key, typename Data>
+    unsigned Epoque<Key, Data>::enterEpoque() {
+        std::lock_guard<std::mutex> guard(mutex);
+        if (deleteNodeNext[newestEpoque] == 0) {
+            return newestEpoque;
+        }
+        unsigned e = (++newestEpoque) % epoquescount; // TODO doesn't change newestEpoque
+        if (e == oldestEpoque) {
+            std::cout << e << " " << newestEpoque << " " << oldestEpoque;
+            //return e;
+        }
+        assert(e != oldestEpoque);// not thread safe
+        epoques[e]++;
+        deleteNodeNext[e].store(0);
+        return e;
     }
 }
 

@@ -211,6 +211,25 @@ namespace BwTree {
         }
     };
 
+    template<typename Key, typename Data>
+    class Epoque {
+        static const std::size_t epoquescount{40000};
+        std::atomic<unsigned> epoques[epoquescount];
+        std::array<Node<Key, Data> *, 10> deletedNodes[epoquescount];
+        std::atomic<std::size_t> deleteNodeNext[epoquescount];
+        std::atomic<unsigned> oldestEpoque{0};
+        std::atomic<unsigned> newestEpoque{0};
+
+        std::mutex mutex;
+
+    public:
+        unsigned enterEpoque();
+
+        void leaveEpoque(unsigned e);
+
+        void markForDeletion(Node<Key, Data> *);
+    };
+
 
     template<typename Key, typename Data>
     class Tree {
@@ -230,6 +249,8 @@ namespace BwTree {
         std::atomic<unsigned long> successfulSplit{0};
         std::atomic<unsigned long> failedSplit{0};
 
+        Epoque<Key, Data> epoque;
+
         struct Settings {
             std::size_t ConsolidateLeafPage = 8;
             std::size_t SplitLeafPage = 14;
@@ -238,8 +259,6 @@ namespace BwTree {
         constexpr static Settings settings{};
 
         //std::mutex insertMutex;
-        std::array<Node<Key, Data> *, 100000> deletedNodes;
-        std::atomic<std::size_t> deleteNodeNext{0};
 
         Node<Key, Data> *PIDToNodePtr(PID node) {
             return mapping[node];
@@ -301,14 +320,14 @@ namespace BwTree {
                 case PageType::leaf:
                 case PageType::deltaDelete: /* fallthrough */
                 case PageType::deltaSplit: /* fallthrough */
-                case PageType::deltaInsert:{};
+                case PageType::deltaInsert:
                     splitLeafPage(pid, node, std::move(stack));
+                    break;
             }
         }
 
-        void splitLeafPage(PID pid, Node <Key, Data> *node, std::stack<PID> &&stack);
+        void splitLeafPage(PID pid, Node<Key, Data> *node, std::stack<PID> &&stack);
 
-        void markForDeletion(Node<Key, Data> *);
 
         template<typename T>
         static size_t binarySearch(T array, std::size_t length, Key key);
