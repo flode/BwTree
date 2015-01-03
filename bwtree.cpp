@@ -59,9 +59,9 @@ namespace BwTree {
         std::stack<PID> needSplitPage;
         std::stack<PID> parentNodes;
         while (nextPID != NotExistantPID) {
-            if (debugTMPCheck++ > 100) {
-                assert(true);
-                std::cout << "test" << std::endl;
+            if (debugTMPCheck++ > 50000) {
+                assert(false);
+                //std::cout << debugTMPCheck << std::endl;
             }
             std::size_t pageDepth = 0;
             parentNodes.push(nextPID);
