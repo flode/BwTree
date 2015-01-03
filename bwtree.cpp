@@ -93,7 +93,7 @@ namespace BwTree {
                         if (res == node1->nodeCount && node1->next != NotExistantPID) {
                             parentNodes.pop();// to keep correct parent history upward
                             nextPID = node1->next;
-                        }else if (res == node1->nodeCount && node1->next != NotExistantPID) {
+                        } else if (res == node1->nodeCount && node1->next != NotExistantPID) {
                             int a = 0;
                         } else {
                             nextPID = std::get<1>(node1->nodes[res]);
@@ -408,8 +408,8 @@ namespace BwTree {
         Key stopAtKey;
         bool pageSplit = false;
         PID prev, next;
-        Node<Key,Data> *startNode = node;
-        bool hadInfinityElement = false ;
+        Node<Key, Data> *startNode = node;
+        bool hadInfinityElement = false;
         while (node != nullptr) {
             switch (node->type) {
                 case PageType::inner: {
@@ -480,93 +480,9 @@ namespace BwTree {
     Tree<Key, Data>::~Tree() {
         for (int i = 0; i < mappingNext; ++i) {
             Node<Key, Data> *node = mapping[i];
-            Tree<Key, Data>::freeNodeRecursively(node);
+            freeNodeRecursively<Key, Data>(node);
         }
-    }
-
-    template<typename Key, typename Data>
-    void Tree<Key, Data>::freeNodeRecursively(Node<Key, Data> *node) {
-        while (node != nullptr) {
-            switch (node->type) {
-                case PageType::inner: /* fallthrough */
-                case PageType::leaf: {
-                    free(node);
-                    return;
-                }
-                case PageType::deltaIndex: /* fallthrough */
-                case PageType::deltaDelete: /* fallthrough */
-                case PageType::deltaSplitInner: /* fallthrough */
-                case PageType::deltaSplit: /* fallthrough */
-                case PageType::deltaInsert: {
-                    auto node1 = static_cast<DeltaNode<Key, Data> *>(node);
-                    node = node1->origin;
-                    free(node1);
-                    continue;
-                }
-                default: {
-                    assert(false);//all nodes have to be handeled
-                }
-            }
-            node = nullptr;
-        }
-    }
-
-    template<typename Key, typename Data>
-    void Epoque<Key, Data>::markForDeletion(Node<Key, Data> *node) {
-        std::lock_guard<std::mutex> guard(mutex);
-        unsigned e = newestEpoque % epoquescount;
-        std::size_t index = deleteNodeNext[e]++;
-        if (index == deletedNodes[e].size())
-            assert(false); //too many deleted nodes
-        deletedNodes[e].at(index) = node;
-    }
-
-    template<typename Key, typename Data>
-    void Epoque<Key, Data>::leaveEpoque(unsigned e) {
-        std::lock_guard<std::mutex> guard(mutex);
-        unsigned rest = --epoques[e];
-        unsigned oldestEpoque = this->oldestEpoque;
-        if (rest == 0) {
-            unsigned lastEpoque = oldestEpoque;
-            std::vector<Node<Key, Data> *> nodes;
-            for (int i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
-                if (epoques[i] == 0) {
-                    for (int j = 0; j < deleteNodeNext[i]; ++j) {
-                        nodes.push_back(deletedNodes[i].at(j));
-                    }
-                    lastEpoque = (i + 1) % epoquescount;
-                } else {
-                    break;
-                }
-            }
-            if (this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque)) {
-                for (auto &node : nodes) {
-                    Tree<Key, Data>::freeNodeRecursively(node);
-                }
-            } else {
-                std::cerr << "failed";
-            }
-        }
-    }
-
-    template<typename Key, typename Data>
-    unsigned Epoque<Key, Data>::enterEpoque() {
-        std::lock_guard<std::mutex> guard(mutex);
-        if (deleteNodeNext[newestEpoque] == 0) {
-            ++epoques[newestEpoque];
-            return newestEpoque;
-        }
-        newestEpoque.store((newestEpoque + 1) % epoquescount); // TODO doesn't change newestEpoque
-        if (newestEpoque == oldestEpoque) {
-            std::cout << " " << newestEpoque << " " << oldestEpoque;
-            //return e;
-        }
-        assert(newestEpoque != oldestEpoque);// not thread safe
-        epoques[newestEpoque].store(1);
-        deleteNodeNext[newestEpoque].store(0);
-        return newestEpoque;
     }
 }
-
 
 #endif
