@@ -29,10 +29,15 @@ namespace BwTree {
         PageType type;
     };
 
+
     template<typename Key, typename Data>
-    struct Leaf : Node<Key, Data> {
+    struct LinkedNode : Node<Key, Data> {
         PID prev;
         PID next;
+    };
+
+    template<typename Key, typename Data>
+    struct Leaf : LinkedNode<Key, Data> {
         std::size_t recordCount;
         // has to be last member for dynamic malloc() !!!
         std::tuple<Key, const Data *> records[];
@@ -44,9 +49,7 @@ namespace BwTree {
 
 
     template<typename Key, typename Data>
-    struct InnerNode : Node<Key, Data> {
-        PID prev;
-        PID next;
+    struct InnerNode : LinkedNode<Key, Data> {
         std::size_t nodeCount;
         // has to be last member for dynamic malloc() !!!
         std::tuple<Key, PID> nodes[];
@@ -106,7 +109,7 @@ namespace BwTree {
     };
 
     template<typename Key, typename Data>
-    InnerNode<Key, Data> *CreateInnerNode(std::size_t size, PID next, PID prev) {
+    InnerNode<Key, Data> *CreateInnerNode(std::size_t size, const PID &next, const PID &prev) {
         size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
         InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, PID>));
         output->nodeCount = size;
@@ -117,7 +120,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    Leaf<Key, Data> *CreateLeaf(std::size_t size, PID next, PID prev) {
+    Leaf<Key, Data> *CreateLeaf(std::size_t size, const PID &next, const PID &prev) {
         size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
         Leaf<Key, Data> *output = (Leaf<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, const Data *>));
         output->recordCount = size;
@@ -241,7 +244,7 @@ namespace BwTree {
         * Special Invariant:
         * - Leaf nodes always contain special infinity value at the right end for the last pointer
         */
-        PID root;
+        std::atomic<PID> root;
         std::vector<std::atomic<Node<Key, Data> *>> mapping{100000};
         //std::atomic<Node<Key,Data>*> mapping[2048];
         //std::array<std::atomic<Node<Key,Data>*>,2048> mapping{};
@@ -256,13 +259,16 @@ namespace BwTree {
         Epoque<Key, Data> epoque;
 
         struct Settings {
-            std::size_t ConsolidateLeafPage = 8;
-            std::size_t SplitLeafPage = 14;
+            std::size_t ConsolidateLeafPage = 5;
+            std::size_t SplitLeafPage = 100;
+            std::size_t SplitInnerPage = 10;
         };
 
         constexpr static Settings settings{};
 
         //std::mutex insertMutex;
+//        std::array<Node<Key, Data> *, 100000> deletedNodes;
+//        std::atomic<std::size_t> deleteNodeNext{0};
 
         Node<Key, Data> *PIDToNodePtr(PID node) {
             return mapping[node];
@@ -320,17 +326,19 @@ namespace BwTree {
                 case PageType::inner: /* fallthrough */
                 case PageType::deltaSplitInner: /* fallthrough */
                 case PageType::deltaIndex:
+                    splitPage(pid, false, node, std::move(stack));
+                    break;
                     assert(false); // not implemented
                 case PageType::leaf:
                 case PageType::deltaDelete: /* fallthrough */
                 case PageType::deltaSplit: /* fallthrough */
                 case PageType::deltaInsert:
-                    splitLeafPage(pid, node, std::move(stack));
+                    splitPage(pid, true, node, std::move(stack));
                     break;
             }
         }
 
-        void splitLeafPage(PID pid, Node<Key, Data> *node, std::stack<PID> &&stack);
+        void splitPage(PID pid, bool leaf, Node<Key, Data> *node, std::stack<PID> &&stack);
 
 
         template<typename T>

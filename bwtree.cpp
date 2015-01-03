@@ -28,6 +28,7 @@ namespace BwTree {
         return returnValue;
     }
 
+
     template<typename Key, typename Data>
     template<typename T>
     size_t Tree<Key, Data>::binarySearch(T array, std::size_t length, Key key) {
@@ -85,8 +86,18 @@ namespace BwTree {
                     };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
+                        if (node1->nodeCount > settings.SplitInnerPage && needSplitPage.size() == 0) {
+                            needSplitPage = parentNodes;
+                        }
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
-                        nextPID = std::get<1>(node1->nodes[res]);
+                        if (res == node1->nodeCount && node1->next != NotExistantPID) {
+                            parentNodes.pop();// to keep correct parent history upward
+                            nextPID = node1->next;
+                        }else if (res == node1->nodeCount && node1->next != NotExistantPID) {
+                            int a = 0;
+                        } else {
+                            nextPID = std::get<1>(node1->nodes[res]);
+                        }
                         nextNode = nullptr;
                         break;
                     };
@@ -212,17 +223,36 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::splitLeafPage(PID pid, Node<Key, Data> *node, std::stack<PID> &&stack) {
+    void Tree<Key, Data>::splitPage(PID pid, bool leaf, Node<Key, Data> *node, std::stack<PID> &&stack) {
         Node<Key, Data> *startNode = mapping[pid];
 
-        Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
-        Key Kp = std::get<0>(tempNode->records[tempNode->recordCount / 2]);
+        Key Kp, Kq;
+        LinkedNode<Key, Data> *newRightNode;
+        if (!leaf) {
+            InnerNode<Key, Data> *tempNode = createConsolidatedInnerPage(startNode); //TODO perhaps more intelligent
+            Kp = std::get<0>(tempNode->nodes[tempNode->nodeCount / 2]);
+            free(tempNode);
+            InnerNode<Key, Data> *newRightInner = createConsolidatedInnerPage(startNode, Kp);
+            Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
+            newRightNode = newRightInner;
+        } else {
+            Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
+            Kp = std::get<0>(tempNode->records[tempNode->recordCount / 2]);
+            free(tempNode);
+            Leaf<Key, Data> *newRightLeaf = createConsolidatedLeafPage(startNode, Kp);
+            Kq = std::get<0>(newRightLeaf->records[newRightLeaf->recordCount - 1]);
+            newRightNode = newRightLeaf;
+        }
 
-        Leaf<Key, Data> *newRightNode = createConsolidatedLeafPage(startNode, Kp);
+
         newRightNode->prev = pid;
         PID newRightNodePID = newNode(newRightNode);
-
-        DeltaSplit<Key, Data> *splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID);
+        DeltaSplit<Key, Data> *splitNode;
+        if (!leaf) {
+            splitNode = CreateDeltaSplitInner(startNode, Kp, newRightNodePID);
+        } else {
+            splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID);
+        }
 
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
@@ -234,17 +264,34 @@ namespace BwTree {
         } else {
             ++successfulSplit;
         }
-
-        PID parentPid = stack.top();
-        Node<Key, Data> *parentNode = mapping[parentPid];
-        assert(parentNode->type == PageType::inner || parentNode->type == PageType::deltaIndex);
         while (true) {
-            DeltaIndex<Key, Data> *indexNode = CreateDeltaIndex(parentNode, Kp, std::get<0>(newRightNode->records[newRightNode->recordCount - 1]), newRightNodePID, pid);
-            if (!mapping[parentPid].compare_exchange_weak(parentNode, indexNode)) {
-                free(indexNode);
-                ++atomicCollisions;
+            if (stack.empty()) {
+                InnerNode<Key, Data> *newRoot = CreateInnerNode<Key, Data>(2, NotExistantPID, NotExistantPID);
+                std::get<0>(newRoot->nodes[0]) = Kp;
+                std::get<1>(newRoot->nodes[0]) = pid;
+                std::get<0>(newRoot->nodes[1]) = Kq;
+                std::get<1>(newRoot->nodes[1]) = newRightNodePID;
+                PID newRootPid = newNode(newRoot);
+                if (!root.compare_exchange_weak(pid, newRootPid)) {
+                    free(newRoot);
+                    ++atomicCollisions;
+                    stack.push(root.load());//TODO does this work?
+                } else {
+                    return;
+                }
             } else {
-                break;
+                PID parentPid = stack.top();
+                Node<Key, Data> *parentNode = PIDToNodePtr(parentPid);
+                assert(parentNode->type == PageType::inner || parentNode->type == PageType::deltaIndex || parentNode->type == PageType::deltaSplitInner);
+                while (true) {
+                    DeltaIndex<Key, Data> *indexNode = CreateDeltaIndex(parentNode, Kp, Kq, newRightNodePID, pid);
+                    if (!mapping[parentPid].compare_exchange_weak(parentNode, indexNode)) {
+                        free(indexNode);
+                        ++atomicCollisions;
+                    } else {
+                        return;
+                    }
+                }
             }
         }
     }
@@ -360,6 +407,8 @@ namespace BwTree {
         Key stopAtKey;
         bool pageSplit = false;
         PID prev, next;
+        Node<Key,Data> *startNode = node;
+        bool hadInfinityElement = false ;
         while (node != nullptr) {
             switch (node->type) {
                 case PageType::inner: {
@@ -369,6 +418,9 @@ namespace BwTree {
                         if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredPIDs.find(std::get<1>(node1->nodes[i])) == consideredPIDs.end()) {
                             nodes.push_back(node1->nodes[i]);
                         }
+                    }
+                    if (!pageSplit && std::get<0>(node1->nodes[node1->nodeCount - 1]) == NotExistantPID) {
+                        hadInfinityElement = true;
                     }
                     prev = node1->prev;
                     if (!pageSplit) {
@@ -386,6 +438,7 @@ namespace BwTree {
                         }
                         if (consideredPIDs.find(node1->child) == consideredPIDs.end()) {
                             nodes.push_back(std::make_tuple(node1->keyRight, node1->child));
+                            consideredPIDs.emplace(node1->child);
                         }
                     }
                     node = node1->origin;
@@ -416,7 +469,9 @@ namespace BwTree {
         for (auto &r : nodes) {
             newNode->nodes[i++] = r;
         }
-        std::get<0>(newNode->nodes[newNode->nodeCount - 1]) = std::numeric_limits<Key>::max();
+        if (hadInfinityElement) {
+            std::get<0>(newNode->nodes[newNode->nodeCount - 1]) = std::numeric_limits<Key>::max();
+        }
         return newNode;
     }
 
@@ -433,6 +488,7 @@ namespace BwTree {
                     }
                     case PageType::deltaIndex: /* fallthrough */
                     case PageType::deltaDelete: /* fallthrough */
+                    case PageType::deltaSplitInner:
                     case PageType::deltaSplit: /* fallthrough */
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaNode<Key, Data> *>(node);
