@@ -304,6 +304,7 @@ namespace BwTree {
         Node<Key, Data> *previousNode = startNode;
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+            free(newNode);
             ++atomicCollisions;
             ++failedConsolidate;
         } else {
@@ -388,10 +389,10 @@ namespace BwTree {
     void Tree<Key, Data>::consolidateInnerPage(PID pid, Node<Key, Data> *node) {
         Node<Key, Data> *startNode = mapping[pid];
         InnerNode<Key, Data> *newNode = createConsolidatedInnerPage(startNode);
-        auto c = newNode->nodeCount;
         Node<Key, Data> *previousNode = startNode;
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+            free(newNode);
             ++atomicCollisions;
             ++failedConsolidate;
         } else {
@@ -479,31 +480,35 @@ namespace BwTree {
     Tree<Key, Data>::~Tree() {
         for (int i = 0; i < mappingNext; ++i) {
             Node<Key, Data> *node = mapping[i];
-            while (node != nullptr) {
-                switch (node->type) {
-                    case PageType::inner: /* fallthrough */
-                    case PageType::leaf: {
-                        free(node);
-                        break;
-                    }
-                    case PageType::deltaIndex: /* fallthrough */
-                    case PageType::deltaDelete: /* fallthrough */
-                    case PageType::deltaSplitInner:
-                    case PageType::deltaSplit: /* fallthrough */
-                    case PageType::deltaInsert: {
-                        auto node1 = static_cast<DeltaNode<Key, Data> *>(node);
-                        node = node1->origin;
-                        free(node1);
-                        continue;
-                    }
-                    default: {
-                        assert(false);//all nodes have to be handeled
-                    }
-                }
-                node = nullptr;
-            }
+            Tree<Key, Data>::freeNodeRecursively(node);
         }
+    }
 
+    template<typename Key, typename Data>
+    void Tree<Key, Data>::freeNodeRecursively(Node<Key, Data> *node) {
+        while (node != nullptr) {
+            switch (node->type) {
+                case PageType::inner: /* fallthrough */
+                case PageType::leaf: {
+                    free(node);
+                    return;
+                }
+                case PageType::deltaIndex: /* fallthrough */
+                case PageType::deltaDelete: /* fallthrough */
+                case PageType::deltaSplitInner: /* fallthrough */
+                case PageType::deltaSplit: /* fallthrough */
+                case PageType::deltaInsert: {
+                    auto node1 = static_cast<DeltaNode<Key, Data> *>(node);
+                    node = node1->origin;
+                    free(node1);
+                    continue;
+                }
+                default: {
+                    assert(false);//all nodes have to be handeled
+                }
+            }
+            node = nullptr;
+        }
     }
 
     template<typename Key, typename Data>
@@ -536,7 +541,7 @@ namespace BwTree {
             }
             if (this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque)) {
                 for (auto &node : nodes) {
-                    free(node);
+                    Tree<Key, Data>::freeNodeRecursively(node);
                 }
             } else {
                 std::cerr << "failed";

@@ -260,7 +260,7 @@ namespace BwTree {
 
         struct Settings {
             std::size_t ConsolidateLeafPage = 5;
-            std::size_t SplitLeafPage = 100;
+            std::size_t SplitLeafPage = 15;
             std::size_t SplitInnerPage = 10;
         };
 
@@ -345,6 +345,7 @@ namespace BwTree {
         static size_t binarySearch(T array, std::size_t length, Key key);
 
     public:
+        static void freeNodeRecursively(Node<Key, Data> *node);
 
         Tree() {
             Node<Key, Data> *datanode = CreateLeaf<Key, Data>(0, NotExistantPID, NotExistantPID);
