@@ -68,6 +68,7 @@ namespace BwTree {
             parentNodes.push(nextPID);
             Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
             Node<Key, Data> *nextNode = startNode;
+            std::size_t deltaLength = 0;
             while (nextNode != nullptr) {
                 ++pageDepth;
                 if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0) {//TODO save for later
@@ -81,13 +82,14 @@ namespace BwTree {
                             nextNode = nullptr;
                             break;
                         } else {
+                            deltaLength++;
                             nextNode = node1->origin;
                             continue;
                         }
                     };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
-                        if (node1->nodeCount > settings.SplitInnerPage && needSplitPage.size() == 0) {
+                        if (node1->nodeCount + deltaLength > settings.SplitInnerPage && needSplitPage.size() == 0) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
@@ -104,7 +106,7 @@ namespace BwTree {
                     };
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
-                        if (node1->recordCount > settings.SplitLeafPage && needSplitPage.size() == 0) {
+                        if (node1->recordCount + deltaLength > settings.SplitLeafPage && needSplitPage.size() == 0) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
@@ -125,6 +127,7 @@ namespace BwTree {
                         if (std::get<0>(node1->record) == key) {
                             return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->record), std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
+                        deltaLength++;
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
                         continue;
@@ -134,6 +137,7 @@ namespace BwTree {
                         if (node1->key == key) {
                             return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
+                        deltaLength--;
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
                         continue;
