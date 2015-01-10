@@ -10,9 +10,6 @@
 using namespace BwTree;
 
 void randomThreadTest() {
-    struct timeval starttime;
-    gettimeofday(&starttime, NULL);
-    Tree<unsigned long long, unsigned long long> tree;
 
     std::vector<std::thread> threads;
     constexpr int numberOfThreads = 4;
@@ -30,6 +27,12 @@ void randomThreadTest() {
         } while (keys.find(val) != keys.end());
         values[i] = val;
     }
+
+
+    struct timeval starttime;
+    gettimeofday(&starttime, NULL);
+    Tree<unsigned long long, unsigned long long> tree;
+
     std::size_t start = 0;
     std::size_t delta = numberValues / numberOfThreads;
     const auto &t_values = values;
