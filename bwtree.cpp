@@ -96,8 +96,6 @@ namespace BwTree {
                         if (res == node1->nodeCount && node1->next != NotExistantPID) {
                             parentNodes.pop();// to keep correct parent history upward
                             nextPID = node1->next;
-                        } else if (res == node1->nodeCount && node1->next != NotExistantPID) {
-                            int a = 0;
                         } else {
                             nextPID = std::get<1>(node1->nodes[res]);
                         }
@@ -182,6 +180,7 @@ namespace BwTree {
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
                     free(newNode);
+                    epoque.leaveEpoque(e);
                     insert(key, record);
                     return;
                 } else {
@@ -245,7 +244,7 @@ namespace BwTree {
                 return;
             }
             auto middle = nodes.begin();
-            std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2));
+            std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2) - 1);
             std::nth_element(nodes.begin(), middle, nodes.end(), [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
                 return std::get<0>(t1) < std::get<0>(t2);
             });
@@ -291,11 +290,11 @@ namespace BwTree {
             gettimeofday(&end, NULL);
             double delta = (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001;
             if (!leaf) {
-                timeForInnerSplit.store(timeForInnerSplit+delta);
+                timeForInnerSplit.store(timeForInnerSplit + delta);
 
                 ++successfulInnerSplit;
             } else {
-                timeForLeafSplit.store(timeForLeafSplit+delta);
+                timeForLeafSplit.store(timeForLeafSplit + delta);
                 ++successfulLeafSplit;
             }
         }
@@ -347,7 +346,7 @@ namespace BwTree {
         } else {
             struct timeval end;
             gettimeofday(&end, NULL);
-            timeForLeafConsolidation.store(timeForLeafConsolidation+(end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+            timeForLeafConsolidation.store(timeForLeafConsolidation + (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
 
             ++successfulLeafConsolidate;
             epoque.markForDeletion(previousNode);
@@ -442,7 +441,7 @@ namespace BwTree {
         } else {
             struct timeval end;
             gettimeofday(&end, NULL);
-            timeForInnerConsolidation.store(timeForInnerConsolidation+(end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+            timeForInnerConsolidation.store(timeForInnerConsolidation + (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
 
             ++successfulInnerConsolidate;
             epoque.markForDeletion(previousNode);
@@ -450,7 +449,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>>& nodes) {
+    std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>> &nodes) {
         std::unordered_set<PID> consideredPIDs;
         Key stopAtKey;
         bool pageSplit = false;
