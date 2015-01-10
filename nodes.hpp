@@ -1,6 +1,10 @@
 #ifndef NODES_HPP
 #define NODES_HPP
 
+#include <algorithm>
+#include <vector>
+#include <tuple>
+
 namespace BwTree {
     using PID = std::size_t;
     constexpr PID NotExistantPID = std::numeric_limits<PID>::max();
@@ -109,6 +113,33 @@ namespace BwTree {
         output->prev = prev;
         return output;
     }
+
+    template<typename Key, typename Data>
+    class Helper {
+
+
+        //InnerNode<Key, Data> *CreateInnerNodeFromUnsorted(std::vector<std::tuple<Key, PID>>::const_iterator begin, std::vector<std::tuple<Key, PID>>::const_iterator end, const PID &next, const PID &prev, bool infinityElement);
+
+        //template<typename Key, typename Data>
+    public:
+        typedef typename std::vector<std::tuple<Key, PID>>::iterator InnerIterator;
+
+        static InnerNode<Key, Data> *CreateInnerNodeFromUnsorted(InnerIterator begin, InnerIterator end, const PID &next, const PID &prev, bool infinityElement) {
+            // construct a new node
+            auto newNode = CreateInnerNode<Key, Data>(std::distance(begin, end), next, prev);
+            std::sort(begin, end, [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
+                return std::get<0>(t1) < std::get<0>(t2);
+            });
+            int i = 0;
+            for (auto it = begin; it != end; ++it) {
+                newNode->nodes[i++] = *it;
+            }
+            if (infinityElement) {
+                std::get<0>(newNode->nodes[newNode->nodeCount - 1]) = std::numeric_limits<Key>::max();
+            }
+            return newNode;
+        }
+    };
 
     template<typename Key, typename Data>
     Leaf<Key, Data> *CreateLeaf(std::size_t size, const PID &next, const PID &prev) {

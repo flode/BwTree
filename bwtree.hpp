@@ -130,7 +130,8 @@ namespace BwTree {
 
         void consolidateInnerPage(PID pid, Node<Key, Data> *node);
 
-        InnerNode<Key, Data> *createConsolidatedInnerPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan = std::numeric_limits<Key>::min());
+        std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>>& returnNodes);
+        InnerNode<Key, Data> *createConsolidatedInnerPage(Node<Key, Data> *startNode);
 
         void consolidateLeafPage(PID pid, Node<Key, Data> *node);
 

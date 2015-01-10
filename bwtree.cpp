@@ -233,13 +233,22 @@ namespace BwTree {
         Key Kp, Kq;
         LinkedNode<Key, Data> *newRightNode;
         if (!leaf) {
-            InnerNode<Key, Data> *tempNode = createConsolidatedInnerPage(startNode); //TODO perhaps more intelligent
-            Kp = std::get<0>(tempNode->nodes[tempNode->nodeCount / 2]);
-            free(tempNode);
-            InnerNode<Key, Data> *newRightInner = createConsolidatedInnerPage(startNode, Kp);
+            std::vector<std::tuple<Key, PID>> nodes;
+            PID prev, next;
+            bool hadInfinityElement;
+            std::tie(prev, next, hadInfinityElement) = std::move(getConsolidatedInnerData(node, nodes));
             if (nodes.size() < settings.SplitInnerPage) {
                 return;
             }
+            auto middle = nodes.begin();
+            std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2));
+            std::nth_element(nodes.begin(), middle, nodes.end(), [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
+                return std::get<0>(t1) < std::get<0>(t2);
+            });
+
+            Kp = std::get<0>(*middle);
+
+            auto newRightInner = Helper<Key, Data>::CreateInnerNodeFromUnsorted(middle + 1, nodes.end(), next, pid, hadInfinityElement);
             assert(newRightInner->nodeCount > 0);
             Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
             newRightNode = newRightInner;
@@ -325,7 +334,6 @@ namespace BwTree {
 
         Node<Key, Data> *startNode = mapping[pid];
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
-        auto c = newNode->recordCount;
         Node<Key, Data> *previousNode = startNode;
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
@@ -438,8 +446,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    InnerNode<Key, Data> *Tree<Key, Data>::createConsolidatedInnerPage(Node<Key, Data> *node, Key keysGreaterThan) {
-        std::vector<std::tuple<Key, PID>> nodes;
+    std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>>& nodes) {
         std::unordered_set<PID> consideredPIDs;
         Key stopAtKey;
         bool pageSplit = false;
@@ -452,7 +459,7 @@ namespace BwTree {
                     auto node1 = static_cast<InnerNode<Key, Data> *>(node);
                     for (int i = 0; i < node1->nodeCount; ++i) {
                         auto &curKey = std::get<0>(node1->nodes[i]);
-                        if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredPIDs.find(std::get<1>(node1->nodes[i])) == consideredPIDs.end()) {
+                        if ((!pageSplit || curKey <= stopAtKey) && consideredPIDs.find(std::get<1>(node1->nodes[i])) == consideredPIDs.end()) {
                             nodes.push_back(node1->nodes[i]);
                         }
                     }
@@ -468,7 +475,7 @@ namespace BwTree {
                 }
                 case PageType::deltaIndex: {
                     auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
-                    if (node1->keyRight > keysGreaterThan && (!pageSplit || node1->keyRight <= stopAtKey)) {
+                    if ((!pageSplit || node1->keyRight <= stopAtKey)) {
                         if (consideredPIDs.find(node1->oldChild) == consideredPIDs.end()) {
                             nodes.push_back(std::make_tuple(node1->keyLeft, node1->oldChild));
                             consideredPIDs.emplace(node1->oldChild);
@@ -497,19 +504,16 @@ namespace BwTree {
             }
             node = nullptr;
         }
-        // construct a new node
-        auto newNode = CreateInnerNode<Key, Data>(nodes.size(), next, prev);
-        std::sort(nodes.begin(), nodes.end(), [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
-            return std::get<0>(t1) < std::get<0>(t2);
-        });
-        int i = 0;
-        for (auto &r : nodes) {
-            newNode->nodes[i++] = r;
-        }
-        if (hadInfinityElement) {
-            std::get<0>(newNode->nodes[newNode->nodeCount - 1]) = std::numeric_limits<Key>::max();
-        }
-        return newNode;
+        return std::make_tuple(prev, next, hadInfinityElement);
+    }
+
+    template<typename Key, typename Data>
+    InnerNode<Key, Data> *Tree<Key, Data>::createConsolidatedInnerPage(Node<Key, Data> *node) {
+        std::vector<std::tuple<Key, PID>> nodes;
+        PID prev, next;
+        bool hadInfinityElement;
+        std::tie(prev, next, hadInfinityElement) = std::move(getConsolidatedInnerData(node, nodes));
+        return Helper<Key, Data>::CreateInnerNodeFromUnsorted(nodes.begin(), nodes.end(), next, prev, hadInfinityElement);
     }
 
     template<typename Key, typename Data>
