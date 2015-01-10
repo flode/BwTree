@@ -237,13 +237,21 @@ namespace BwTree {
             Kp = std::get<0>(tempNode->nodes[tempNode->nodeCount / 2]);
             free(tempNode);
             InnerNode<Key, Data> *newRightInner = createConsolidatedInnerPage(startNode, Kp);
+            if (nodes.size() < settings.SplitInnerPage) {
+                return;
+            }
+            assert(newRightInner->nodeCount > 0);
             Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
             newRightNode = newRightInner;
         } else {
             Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
+            if (tempNode->recordCount < settings.SplitLeafPage) {
+                return;
+            }
             Kp = std::get<0>(tempNode->records[tempNode->recordCount / 2]);
             free(tempNode);
             Leaf<Key, Data> *newRightLeaf = createConsolidatedLeafPage(startNode, Kp);
+            assert(newRightLeaf->recordCount > 0);
             Kq = std::get<0>(newRightLeaf->records[newRightLeaf->recordCount - 1]);
             newRightNode = newRightLeaf;
         }
