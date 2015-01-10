@@ -5,6 +5,7 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
+#include <random>
 #include <iostream>
 #include <stack>
 #include <assert.h>
@@ -162,6 +163,9 @@ namespace BwTree {
 
         template<typename T>
         static size_t binarySearch(T array, std::size_t length, Key key);
+
+        std::default_random_engine d;
+        std::uniform_int_distribution<int> rand{0,100};
 
     public:
 

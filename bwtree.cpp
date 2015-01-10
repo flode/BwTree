@@ -59,6 +59,7 @@ namespace BwTree {
         std::stack<PID> needConsolidatePage;
         std::stack<PID> needSplitPage;
         std::stack<PID> parentNodes;
+        int level = 0;
         while (nextPID != NotExistantPID) {
             if (debugTMPCheck++ > 50000) {
                 assert(false);
@@ -71,13 +72,14 @@ namespace BwTree {
             std::size_t deltaLength = 0;
             while (nextNode != nullptr) {
                 ++pageDepth;
-                if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0) {//TODO save for later
+                if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0 && this->rand(this->d) - level < 10) {//TODO save for later
                     needConsolidatePage = parentNodes;
                 }
                 switch (nextNode->type) {
                     case PageType::deltaIndex: {
                         auto node1 = static_cast<DeltaIndex<Key, Data> *>(nextNode);
                         if (key > node1->keyLeft && key <= node1->keyRight) {
+                            level++;
                             nextPID = node1->child;
                             nextNode = nullptr;
                             break;
@@ -89,7 +91,7 @@ namespace BwTree {
                     };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
-                        if (node1->nodeCount + deltaLength > settings.SplitInnerPage && needSplitPage.size() == 0) {
+                        if (node1->nodeCount + deltaLength > settings.SplitInnerPage && needSplitPage.size() == 0 && this->rand(this->d) - level < 10) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
@@ -97,6 +99,7 @@ namespace BwTree {
                             parentNodes.pop();// to keep correct parent history upward
                             nextPID = node1->next;
                         } else {
+                            level++;
                             nextPID = std::get<1>(node1->nodes[res]);
                         }
                         nextNode = nullptr;
