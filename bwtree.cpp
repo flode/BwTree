@@ -291,11 +291,11 @@ namespace BwTree {
             gettimeofday(&end, NULL);
             double delta = (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001;
             if (!leaf) {
-                timeForInnerSplit.store(delta);
+                timeForInnerSplit.store(timeForInnerSplit+delta);
 
                 ++successfulInnerSplit;
             } else {
-                timeForLeafSplit.store(delta);
+                timeForLeafSplit.store(timeForLeafSplit+delta);
                 ++successfulLeafSplit;
             }
         }
@@ -347,7 +347,7 @@ namespace BwTree {
         } else {
             struct timeval end;
             gettimeofday(&end, NULL);
-            timeForLeafConsolidation.store((end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+            timeForLeafConsolidation.store(timeForLeafConsolidation+(end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
 
             ++successfulLeafConsolidate;
             epoque.markForDeletion(previousNode);
@@ -442,7 +442,7 @@ namespace BwTree {
         } else {
             struct timeval end;
             gettimeofday(&end, NULL);
-            timeForInnerConsolidation.store((end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+            timeForInnerConsolidation.store(timeForInnerConsolidation+(end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
 
             ++successfulInnerConsolidate;
             epoque.markForDeletion(previousNode);
