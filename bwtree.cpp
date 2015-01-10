@@ -298,6 +298,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateLeafPage(PID pid, Node<Key, Data> *node) {
+        struct timeval starttime;
+        gettimeofday(&starttime, NULL);
+
         Node<Key, Data> *startNode = mapping[pid];
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
         auto c = newNode->recordCount;
@@ -306,9 +309,13 @@ namespace BwTree {
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             free(newNode);
             ++atomicCollisions;
-            ++failedConsolidate;
+            ++failedLeafConsolidate;
         } else {
-            ++successfulConsolidate;
+            struct timeval end;
+            gettimeofday(&end, NULL);
+            timeForLeafConsolidation.store((end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+
+            ++successfulLeafConsolidate;
             epoque.markForDeletion(previousNode);
         }
     }
@@ -387,6 +394,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateInnerPage(PID pid, Node<Key, Data> *node) {
+        struct timeval starttime;
+        gettimeofday(&starttime, NULL);
+
         Node<Key, Data> *startNode = mapping[pid];
         InnerNode<Key, Data> *newNode = createConsolidatedInnerPage(startNode);
         Node<Key, Data> *previousNode = startNode;
@@ -394,9 +404,13 @@ namespace BwTree {
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
             free(newNode);
             ++atomicCollisions;
-            ++failedConsolidate;
+            ++failedInnerConsolidate;
         } else {
-            ++successfulConsolidate;
+            struct timeval end;
+            gettimeofday(&end, NULL);
+            timeForInnerConsolidation.store((end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+
+            ++successfulInnerConsolidate;
             epoque.markForDeletion(previousNode);
         }
     }

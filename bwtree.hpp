@@ -61,10 +61,18 @@ namespace BwTree {
         //PID mappingSize = 2048;
         std::atomic<PID> mappingNext{0};
         std::atomic<unsigned long> atomicCollisions{0};
-        std::atomic<unsigned long> successfulConsolidate{0};
-        std::atomic<unsigned long> failedConsolidate{0};
-        std::atomic<unsigned long> successfulSplit{0};
-        std::atomic<unsigned long> failedSplit{0};
+        std::atomic<unsigned long> successfulLeafConsolidate{0};
+        std::atomic<unsigned long> successfulInnerConsolidate{0};
+        std::atomic<unsigned long> failedLeafConsolidate{0};
+        std::atomic<unsigned long> failedInnerConsolidate{0};
+        std::atomic<unsigned long> successfulLeafSplit{0};
+        std::atomic<unsigned long> successfulInnerSplit{0};
+        std::atomic<unsigned long> failedLeafSplit{0};
+        std::atomic<unsigned long> failedInnerSplit{0};
+        std::atomic<double> timeForLeafConsolidation{0.0};
+        std::atomic<double> timeForInnerConsolidation{0.0};
+        std::atomic<double> timeForLeafSplit{0.0};
+        std::atomic<double> timeForInnerSplit{0.0};
 
         Epoque<Key, Data> epoque;
 
@@ -172,24 +180,57 @@ namespace BwTree {
 
         Data *search(Key key);
 
-        unsigned long const getAtomicCollisions() const {
+
+        std::atomic<unsigned long> const &getAtomicCollisions() const {
             return atomicCollisions;
         }
 
-        unsigned long const getSuccessfulConsolidate() const {
-            return successfulConsolidate;
+        std::atomic<unsigned long> const &getSuccessfulLeafConsolidate() const {
+            return successfulLeafConsolidate;
         }
 
-        unsigned long const getFailedConsolidate() const {
-            return failedConsolidate;
+        std::atomic<unsigned long> const &getSuccessfulInnerConsolidate() const {
+            return successfulInnerConsolidate;
         }
 
-        unsigned long const getSuccessfulSplit() const {
-            return successfulSplit;
+        std::atomic<unsigned long> const &getFailedLeafConsolidate() const {
+            return failedLeafConsolidate;
         }
 
-        unsigned long const getFailedSplit() const {
-            return failedSplit;
+        std::atomic<unsigned long> const &getFailedInnerConsolidate() const {
+            return failedInnerConsolidate;
+        }
+
+        std::atomic<unsigned long> const &getSuccessfulLeafSplit() const {
+            return successfulLeafSplit;
+        }
+
+        std::atomic<unsigned long> const &getSuccessfulInnerSplit() const {
+            return successfulInnerSplit;
+        }
+
+        std::atomic<unsigned long> const &getFailedLeafSplit() const {
+            return failedLeafSplit;
+        }
+
+        std::atomic<unsigned long> const &getFailedInnerSplit() const {
+            return failedInnerSplit;
+        }
+
+        std::atomic<double> const &getTimeForLeafConsolidation() const {
+            return timeForLeafConsolidation;
+        }
+
+        std::atomic<double> const &getTimeForInnerConsolidation() const {
+            return timeForInnerConsolidation;
+        }
+
+        std::atomic<double> const &getTimeForLeafSplit() const {
+            return timeForLeafSplit;
+        }
+
+        std::atomic<double> const &getTimeForInnerSplit() const {
+            return timeForInnerSplit;
         }
     };
 }

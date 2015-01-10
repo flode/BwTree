@@ -66,10 +66,18 @@ void randomThreadTest() {
 
 
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
-    std::cout << "successful consolidation: " << tree.getSuccessfulConsolidate() << std::endl;
-    std::cout << "failed consolidation: " << tree.getFailedConsolidate() << std::endl;
-    std::cout << "successful split: " << tree.getSuccessfulSplit() << std::endl;
-    std::cout << "failed split: " << tree.getFailedSplit() << std::endl;
+    std::cout << "successful leaf consolidation: " << tree.getSuccessfulLeafConsolidate() << std::endl;
+    std::cout << "failed leaf consolidation: " << tree.getFailedLeafConsolidate() << std::endl;
+    std::cout << "leaf consolidation time avg: " << tree.getTimeForLeafConsolidation() / tree.getSuccessfulLeafConsolidate() << std::endl;
+    std::cout << "successful leaf split: " << tree.getSuccessfulLeafSplit() << std::endl;
+    std::cout << "failed leaf split: " << tree.getFailedLeafSplit() << std::endl;
+    std::cout << "leaf split time avg: " << tree.getTimeForLeafSplit() / tree.getSuccessfulLeafSplit() << std::endl;
+    std::cout << "successful inner consolidation: " << tree.getSuccessfulInnerConsolidate() << std::endl;
+    std::cout << "failed inner consolidation: " << tree.getFailedInnerConsolidate() << std::endl;
+    std::cout << "inner consolidation time avg: " << tree.getTimeForInnerConsolidation() / tree.getSuccessfulInnerConsolidate() << std::endl;
+    std::cout << "successful inner split: " << tree.getSuccessfulInnerSplit() << std::endl;
+    std::cout << "failed innersplit: " << tree.getFailedInnerSplit() << std::endl;
+    std::cout << "inner split time avg: " << tree.getTimeForInnerSplit() / tree.getSuccessfulInnerSplit() << std::endl;
 }
 
 int main() {
