@@ -259,13 +259,21 @@ namespace BwTree {
             Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
             newRightNode = newRightInner;
         } else {
-            Leaf<Key, Data> *tempNode = createConsolidatedLeafPage(startNode); //TODO perhaps more intelligent
-            if (tempNode->recordCount < settings.SplitLeafPage) {
+            std::vector<std::tuple<Key, const Data*>> records;
+            PID prev, next;
+            std::tie(prev, next) = getConsolidatedLeafData(node, records);
+            if (records.size() < settings.SplitLeafPage) {
                 return;
             }
-            Kp = std::get<0>(tempNode->records[tempNode->recordCount / 2]);
-            free(tempNode);
-            Leaf<Key, Data> *newRightLeaf = createConsolidatedLeafPage(startNode, Kp);
+            auto middle = records.begin();
+            std::advance(middle, (std::distance(records.begin(), records.end()) / 2) - 1);
+            std::nth_element(records.begin(), middle, records.end(), [](const std::tuple<Key, const Data*> &t1, const std::tuple<Key, const Data*> &t2) {
+                return std::get<0>(t1) < std::get<0>(t2);
+            });
+
+            Kp = std::get<0>(*middle);
+
+            auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromUnsorted(middle + 1, records.end(), next, pid);
             assert(newRightLeaf->recordCount > 0);
             Kq = std::get<0>(newRightLeaf->records[newRightLeaf->recordCount - 1]);
             newRightNode = newRightLeaf;
@@ -357,8 +365,7 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *node, Key keysGreaterThan) {
-        std::vector<std::tuple<Key, const Data *>> records;
+    std::tuple<PID, PID> Tree<Key, Data>::getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &records) {
         std::unordered_map<Key, bool> consideredKeys;
         Key stopAtKey;
         bool pageSplit = false;
@@ -369,7 +376,7 @@ namespace BwTree {
                     auto node1 = static_cast<Leaf<Key, Data> *>(node);
                     for (int i = 0; i < node1->recordCount; ++i) {
                         auto &curKey = std::get<0>(node1->records[i]);
-                        if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
+                        if ((!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
                             records.push_back(node1->records[i]);
                             consideredKeys[curKey] = true;
                         }
@@ -384,7 +391,7 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey > keysGreaterThan && (!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
+                    if ((!pageSplit || curKey <= stopAtKey) && consideredKeys.find(curKey) == consideredKeys.end()) {
                         records.push_back(node1->record);
                         consideredKeys[curKey] = true;
                     }
@@ -415,18 +422,18 @@ namespace BwTree {
             }
             node = nullptr;
         }
-        // construct a new node
-        auto newNode = CreateLeaf<Key, Data>(records.size(), next, prev);
-        std::sort(records.begin(), records.end(), [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
-            return std::get<0>(t1) < std::get<0>(t2);
-        });
-        int i = 0;
-        for (auto &r : records) {
-            newNode->records[i++] = r;
-        }
-        return newNode;
+        return std::make_tuple(prev, next);
     }
 
+
+    template<typename Key, typename Data>
+    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *node) {
+        std::vector<std::tuple<Key, const Data *>> records;
+        PID prev, next;
+        std::tie(prev, next) = getConsolidatedLeafData(node, records);
+
+        return Helper<Key, Data>::CreateLeafNodeFromUnsorted(records.begin(), records.end(), next, prev);
+    }
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateInnerPage(PID pid, Node<Key, Data> *node) {

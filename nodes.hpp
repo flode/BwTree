@@ -115,6 +115,17 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
+    Leaf<Key, Data> *CreateLeaf(std::size_t size, const PID &next, const PID &prev) {
+        size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
+        Leaf<Key, Data> *output = (Leaf<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, const Data *>));
+        output->recordCount = size;
+        output->type = PageType::leaf;
+        output->next = next;
+        output->prev = prev;
+        return output;
+    }
+
+    template<typename Key, typename Data>
     class Helper {
 
 
@@ -139,18 +150,21 @@ namespace BwTree {
             }
             return newNode;
         }
-    };
 
-    template<typename Key, typename Data>
-    Leaf<Key, Data> *CreateLeaf(std::size_t size, const PID &next, const PID &prev) {
-        size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
-        Leaf<Key, Data> *output = (Leaf<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, const Data *>));
-        output->recordCount = size;
-        output->type = PageType::leaf;
-        output->next = next;
-        output->prev = prev;
-        return output;
-    }
+        typedef typename std::vector<std::tuple<Key, const Data*>>::iterator LeafIterator;
+        static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &next, const PID &prev) {
+            // construct a new node
+            auto newNode = CreateLeaf<Key, Data>(std::distance(begin, end), next, prev);
+            std::sort(begin, end, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
+                return std::get<0>(t1) < std::get<0>(t2);
+            });
+            int i = 0;
+            for (auto it = begin; it != end; ++it) {
+                newNode->records[i++] = *it;
+            }
+            return newNode;
+        }
+    };
 
     template<typename Key, typename Data>
     DeltaInsert<Key, Data> *CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data *> record) {

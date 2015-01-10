@@ -136,7 +136,8 @@ namespace BwTree {
 
         void consolidateLeafPage(PID pid, Node<Key, Data> *node);
 
-        Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode, Key keysGreaterEqualThan = std::numeric_limits<Key>::min());
+        std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data*>>& returnNodes);
+        Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode);
 
         void splitPage(std::stack<PID> &&stack) {
             PID pid = stack.top();
