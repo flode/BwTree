@@ -6,6 +6,7 @@
 #include <cassert>
 #include <algorithm>
 #include <unordered_set>
+#include <sys/time.h>
 
 namespace BwTree {
 
@@ -224,6 +225,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::splitPage(PID pid, bool leaf, Node<Key, Data> *node, std::stack<PID> &&stack) {
+        struct timeval starttime;
+        gettimeofday(&starttime, NULL);
+
         Node<Key, Data> *startNode = mapping[pid];
 
         Key Kp, Kq;
@@ -256,13 +260,23 @@ namespace BwTree {
 
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
-            ++failedSplit;
+            if (!leaf) ++failedInnerSplit; else ++failedLeafSplit;
             free(splitNode);
             free(newRightNode);
             mapping[newRightNodePID].store(nullptr);
             return;
         } else {
-            ++successfulSplit;
+            struct timeval end;
+            gettimeofday(&end, NULL);
+            double delta = (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001;
+            if (!leaf) {
+                timeForInnerSplit.store(delta);
+
+                ++successfulInnerSplit;
+            } else {
+                timeForLeafSplit.store(delta);
+                ++successfulLeafSplit;
+            }
         }
         while (true) {
             if (stack.empty()) {
