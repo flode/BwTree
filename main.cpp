@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <thread>
-#include <sys/time.h>
 #include "bwtree.hpp"
 
 using namespace BwTree;
@@ -29,8 +28,7 @@ void randomThreadTest() {
     }
 
 
-    struct timeval starttime;
-    gettimeofday(&starttime, NULL);
+    auto starttime = std::chrono::system_clock::now();
     Tree<unsigned long long, unsigned long long> tree;
 
     std::size_t start = 0;
@@ -62,10 +60,9 @@ void randomThreadTest() {
         }
     }
 
-    struct timeval end;
-    gettimeofday(&end, NULL);
-    double diff = (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001;
-    std::cout << "Elapsed time in s: " << diff << std::endl;
+    std::cout << "    " << c << std::endl;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
+    std::cout << "Elapsed time in ms: " << duration.count() << std::endl;
 
 
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;

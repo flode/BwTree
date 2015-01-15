@@ -6,7 +6,6 @@
 #include <cassert>
 #include <algorithm>
 #include <unordered_set>
-#include <sys/time.h>
 
 namespace BwTree {
 
@@ -231,8 +230,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::splitPage(PID pid, bool leaf, Node<Key, Data> *node, std::stack<PID> &&stack) {
-        struct timeval starttime;
-        gettimeofday(&starttime, NULL);
+        auto starttime = std::chrono::system_clock::now();
 
         Node<Key, Data> *startNode = mapping[pid];
 
@@ -298,14 +296,13 @@ namespace BwTree {
             return;
         } else {
             struct timeval end;
-            gettimeofday(&end, NULL);
-            double delta = (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001;
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
             if (!leaf) {
-                timeForInnerSplit.store(timeForInnerSplit + delta);
+                timeForInnerSplit.store(timeForInnerSplit + duration.count());
 
                 ++successfulInnerSplit;
             } else {
-                timeForLeafSplit.store(timeForLeafSplit + delta);
+                timeForLeafSplit.store(timeForLeafSplit + duration.count());
                 ++successfulLeafSplit;
             }
         }
@@ -343,8 +340,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateLeafPage(PID pid, Node<Key, Data> *node) {
-        struct timeval starttime;
-        gettimeofday(&starttime, NULL);
+        auto starttime = std::chrono::system_clock::now();
 
         Node<Key, Data> *startNode = mapping[pid];
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
@@ -355,9 +351,8 @@ namespace BwTree {
             ++atomicCollisions;
             ++failedLeafConsolidate;
         } else {
-            struct timeval end;
-            gettimeofday(&end, NULL);
-            timeForLeafConsolidation.store(timeForLeafConsolidation + (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
+            timeForLeafConsolidation.store(timeForLeafConsolidation + duration.count());
 
             ++successfulLeafConsolidate;
             epoque.markForDeletion(previousNode);
@@ -437,8 +432,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateInnerPage(PID pid, Node<Key, Data> *node) {
-        struct timeval starttime;
-        gettimeofday(&starttime, NULL);
+        auto starttime = std::chrono::system_clock::now();
 
         Node<Key, Data> *startNode = mapping[pid];
         InnerNode<Key, Data> *newNode = createConsolidatedInnerPage(startNode);
@@ -449,9 +443,8 @@ namespace BwTree {
             ++atomicCollisions;
             ++failedInnerConsolidate;
         } else {
-            struct timeval end;
-            gettimeofday(&end, NULL);
-            timeForInnerConsolidation.store(timeForInnerConsolidation + (end.tv_sec - starttime.tv_sec) * 1.0 + (end.tv_usec - starttime.tv_usec) * 0.000001);
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
+            timeForInnerConsolidation.store(timeForInnerConsolidation + duration.count());
 
             ++successfulInnerConsolidate;
             epoque.markForDeletion(previousNode);
