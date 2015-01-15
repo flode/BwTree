@@ -67,10 +67,11 @@ namespace BwTree {
             parentNodes.push(nextPID);
             Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
             Node<Key, Data> *nextNode = startNode;
-            std::size_t deltaLength = 0;
+            long deltaNodeCount = 0;
+            long removedBySplit = 0;
             while (nextNode != nullptr) {
                 ++pageDepth;
-                if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0 && this->rand(this->d) - level < 10) {//TODO save for later
+                if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0 && this->rand(this->d) - level < 40) {//TODO save for later
                     needConsolidatePage = parentNodes;
                 }
                 switch (nextNode->type) {
@@ -82,14 +83,14 @@ namespace BwTree {
                             nextNode = nullptr;
                             break;
                         } else {
-                            deltaLength++;
+                            deltaNodeCount++;
                             nextNode = node1->origin;
                             continue;
                         }
                     };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
-                        if (node1->nodeCount + deltaLength > settings.SplitInnerPage && needSplitPage.size() == 0 && this->rand(this->d) - level < 10) {
+                        if (node1->nodeCount + deltaNodeCount - removedBySplit > settings.SplitInnerPage && needSplitPage.size() == 0 && this->rand(this->d) - level < 10) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
@@ -105,7 +106,7 @@ namespace BwTree {
                     };
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
-                        if (node1->recordCount + deltaLength > settings.SplitLeafPage && needSplitPage.size() == 0) {
+                        if (node1->recordCount + deltaNodeCount - removedBySplit > settings.SplitLeafPage && needSplitPage.size() == 0) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
@@ -126,7 +127,7 @@ namespace BwTree {
                         if (std::get<0>(node1->record) == key) {
                             return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->record), std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
-                        deltaLength++;
+                        deltaNodeCount++;
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
                         continue;
@@ -136,7 +137,7 @@ namespace BwTree {
                         if (node1->key == key) {
                             return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, std::move(needConsolidatePage), std::move(needSplitPage), std::move(parentNodes));
                         }
-                        deltaLength--;
+                        deltaNodeCount--;
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
                         continue;
@@ -150,6 +151,7 @@ namespace BwTree {
                             parentNodes.pop();
                             continue;
                         }
+                        removedBySplit += node1->removedElements;
                         nextNode = node1->origin;
                         assert(nextNode != nullptr);
                         continue;
@@ -231,6 +233,7 @@ namespace BwTree {
 
         Key Kp, Kq;
         LinkedNode<Key, Data> *newRightNode;
+        std::size_t removedElements;
         if (!leaf) {
             std::vector<std::tuple<Key, PID>> nodes;
             PID prev, next;
@@ -250,9 +253,10 @@ namespace BwTree {
             auto newRightInner = Helper<Key, Data>::CreateInnerNodeFromUnsorted(middle + 1, nodes.end(), next, pid, hadInfinityElement);
             assert(newRightInner->nodeCount > 0);
             Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
+            removedElements = newRightInner->nodeCount;
             newRightNode = newRightInner;
         } else {
-            std::vector<std::tuple<Key, const Data*>> records;
+            std::vector<std::tuple<Key, const Data *>> records;
             PID prev, next;
             std::tie(prev, next) = getConsolidatedLeafData(node, records);
             if (records.size() < settings.SplitLeafPage) {
@@ -260,7 +264,7 @@ namespace BwTree {
             }
             auto middle = records.begin();
             std::advance(middle, (std::distance(records.begin(), records.end()) / 2) - 1);
-            std::nth_element(records.begin(), middle, records.end(), [](const std::tuple<Key, const Data*> &t1, const std::tuple<Key, const Data*> &t2) {
+            std::nth_element(records.begin(), middle, records.end(), [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
                 return std::get<0>(t1) < std::get<0>(t2);
             });
 
@@ -269,6 +273,7 @@ namespace BwTree {
             auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromUnsorted(middle + 1, records.end(), next, pid);
             assert(newRightLeaf->recordCount > 0);
             Kq = std::get<0>(newRightLeaf->records[newRightLeaf->recordCount - 1]);
+            removedElements = newRightLeaf->recordCount;
             newRightNode = newRightLeaf;
         }
 
@@ -277,9 +282,9 @@ namespace BwTree {
         PID newRightNodePID = newNode(newRightNode);
         DeltaSplit<Key, Data> *splitNode;
         if (!leaf) {
-            splitNode = CreateDeltaSplitInner(startNode, Kp, newRightNodePID);
+            splitNode = CreateDeltaSplitInner(startNode, Kp, newRightNodePID, removedElements);
         } else {
-            splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID);
+            splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID, removedElements);
         }
 
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {

@@ -85,6 +85,7 @@ namespace BwTree {
     struct DeltaSplit : DeltaNode<Key, Data> {
         Key key;
         PID sidelink;
+        std::size_t removedElements;
     private:
         DeltaSplit() = delete;
 
@@ -151,7 +152,8 @@ namespace BwTree {
             return newNode;
         }
 
-        typedef typename std::vector<std::tuple<Key, const Data*>>::iterator LeafIterator;
+        typedef typename std::vector<std::tuple<Key, const Data *>>::iterator LeafIterator;
+
         static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &next, const PID &prev) {
             // construct a new node
             auto newNode = CreateLeaf<Key, Data>(std::distance(begin, end), next, prev);
@@ -187,19 +189,20 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    DeltaSplit<Key, Data> *CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink) {
+    DeltaSplit<Key, Data> *CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink, std::size_t removedElements) {
         size_t s = sizeof(DeltaSplit<Key, Data>);
         DeltaSplit<Key, Data> *output = (DeltaSplit<Key, Data> *) malloc(s);
         output->type = PageType::deltaSplit;
         output->origin = origin;
         output->key = splitKey;
         output->sidelink = sidelink;
+        output->removedElements = removedElements;
         return output;
     }
 
     template<typename Key, typename Data>
-    DeltaSplit<Key, Data> *CreateDeltaSplitInner(Node<Key, Data> *origin, Key splitKey, PID sidelink) {
-        DeltaSplit<Key, Data> *output = CreateDeltaSplit(origin, splitKey, sidelink);
+    DeltaSplit<Key, Data> *CreateDeltaSplitInner(Node<Key, Data> *origin, Key splitKey, PID sidelink, std::size_t removedElements) {
+        DeltaSplit<Key, Data> *output = CreateDeltaSplit(origin, splitKey, sidelink, removedElements);
         output->type = PageType::deltaSplitInner;
         return output;
     }
