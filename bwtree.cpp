@@ -11,7 +11,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     Data *Tree<Key, Data>::search(Key key) {
-        unsigned e = epoque.enterEpoque();
+        EnterEpoque<Key, Data> epoqueGuard(epoque);
         FindDataPageResult<Key, Data> res = findDataPage(key);
         Data *returnValue;
         if (res.dataNode == nullptr) {
@@ -24,7 +24,6 @@ namespace BwTree {
         } else if (res.needConsolidatePage.size() > 0) {
             consolidatePage(std::move(res.needConsolidatePage));
         }
-        epoque.leaveEpoque(e);
         return returnValue;
     }
 
@@ -167,7 +166,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::insert(Key key, const Data *const record) {
-        unsigned e = epoque.enterEpoque();
+        EnterEpoque<Key, Data> epoqueGuard(epoque);
         FindDataPageResult<Key, Data> res = findDataPage(key);
         switch (res.startNode->type) {
             case PageType::deltaIndex:
@@ -182,7 +181,6 @@ namespace BwTree {
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
                     free(newNode);
-                    epoque.leaveEpoque(e);
                     insert(key, record);
                     return;
                 } else {
@@ -191,7 +189,6 @@ namespace BwTree {
                     } else if (res.needConsolidatePage.size() > 0) {
                         consolidatePage(std::move(res.needConsolidatePage));
                     }
-                    epoque.leaveEpoque(e);
                     return;
                 }
             }
@@ -204,10 +201,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::deleteKey(Key key) {
-        unsigned e = epoque.enterEpoque();
+        EnterEpoque<Key, Data> epoqueGuard(epoque);
         FindDataPageResult<Key, Data> res = findDataPage(key);
         if (res.dataNode == nullptr) {
-            epoque.leaveEpoque(e);
             return;
         }
         switch (res.startNode->type) {
@@ -221,7 +217,6 @@ namespace BwTree {
                     deleteKey(key);//TODO without recursion
                     return;
                 }
-                epoque.leaveEpoque(e);
                 return;
             }
         }

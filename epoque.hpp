@@ -8,13 +8,13 @@ namespace BwTree {
     class Epoque {
         static const std::size_t epoquescount{40000};
         std::atomic<unsigned> epoques[epoquescount];
-        std::array<Node < Key, Data> *, 10> deletedNodes[epoquescount];
-        std::atomic <std::size_t> deleteNodeNext[epoquescount];
+        std::array<Node<Key, Data> *, 10> deletedNodes[epoquescount];
+        std::atomic<std::size_t> deleteNodeNext[epoquescount];
         std::atomic<unsigned> oldestEpoque{0};
         std::atomic<unsigned> newestEpoque{0};
 
         std::mutex mutex;
-
+        std::size_t openEpoques = 0;
     public:
         Epoque() {
             epoques[newestEpoque].store(0);
@@ -25,13 +25,32 @@ namespace BwTree {
 
         void leaveEpoque(unsigned e);
 
-        void markForDeletion(Node <Key, Data> *);
+        void markForDeletion(Node<Key, Data> *);
+    };
+
+    template<typename Key, typename Data>
+    class EnterEpoque {
+        Epoque<Key, Data> &epoque;
+        unsigned int myEpoque;
+
+    public:
+        EnterEpoque(Epoque<Key, Data> &epoque) : epoque(epoque) {
+            myEpoque = epoque.enterEpoque();
+        }
+
+        virtual ~EnterEpoque() {
+            epoque.leaveEpoque(myEpoque);
+        }
+
+        Epoque<Key, Data> &getEpoque() const {
+            return epoque;
+        }
     };
 
 
     template<typename Key, typename Data>
-    void Epoque<Key, Data>::markForDeletion(Node <Key, Data> *node) {
-        std::lock_guard <std::mutex> guard(mutex);
+    void Epoque<Key, Data>::markForDeletion(Node<Key, Data> *node) {
+        std::lock_guard<std::mutex> guard(mutex);
         unsigned e = newestEpoque % epoquescount;
         std::size_t index = deleteNodeNext[e]++;
         if (index == deletedNodes[e].size())
@@ -41,12 +60,13 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Epoque<Key, Data>::leaveEpoque(unsigned e) {
-        std::lock_guard <std::mutex> guard(mutex);
+        std::lock_guard<std::mutex> guard(mutex);
+        openEpoques--;
         unsigned rest = --epoques[e];
         unsigned oldestEpoque = this->oldestEpoque;
         if (rest == 0) {
             unsigned lastEpoque = oldestEpoque;
-            std::vector < Node < Key, Data > * > nodes;
+            std::vector<Node<Key, Data> *> nodes;
             for (int i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
                 if (epoques[i] == 0) {
                     for (int j = 0; j < deleteNodeNext[i]; ++j) {
@@ -69,7 +89,11 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     unsigned Epoque<Key, Data>::enterEpoque() {
-        std::lock_guard <std::mutex> guard(mutex);
+        std::lock_guard<std::mutex> guard(mutex);
+        openEpoques++;
+        if (openEpoques > 100) {
+            assert(false);
+        }
         if (deleteNodeNext[newestEpoque] == 0) {
             ++epoques[newestEpoque];
             return newestEpoque;
