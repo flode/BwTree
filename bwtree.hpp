@@ -49,6 +49,35 @@ namespace BwTree {
     };
 
 
+    struct Settings {
+        Settings(size_t splitLeaf, std::vector<size_t> const &splitInner, size_t consolidateLeaf, std::vector<size_t> const &consolidateInner)
+                : splitLeaf(splitLeaf),
+                  splitInner(splitInner),
+                  consolidateLeaf(consolidateLeaf),
+                  consolidateInner(consolidateInner) {
+        }
+
+        std::size_t splitLeaf;
+        std::size_t getSplitLimitLeaf() const {
+            return splitLeaf;
+        }
+
+        std::vector<std::size_t> splitInner;
+        std::size_t getSplitLimitInner(unsigned level) const {
+            return level < splitInner.size() ? splitInner[level] : splitInner[splitInner.size()-1];
+        }
+
+        std::size_t consolidateLeaf;
+        std::size_t getConsolidateLimitLeaf() const {
+            return consolidateLeaf;
+        }
+
+        std::vector<std::size_t> consolidateInner;
+        std::size_t getConsolidateLimitInner(unsigned level) const {
+            return level < consolidateInner.size() ? consolidateInner[level] : consolidateInner[consolidateInner.size()-1];
+        }
+    };
+
     template<typename Key, typename Data>
     class Tree {
         /**
@@ -77,14 +106,7 @@ namespace BwTree {
 
         Epoque<Key, Data> epoque;
 
-        struct Settings {
-            std::size_t ConsolidateLeafPage = 5;
-            std::size_t ConsolidateInnerPage = 4;
-            std::size_t SplitLeafPage = 200;
-            std::size_t SplitInnerPage = 100;
-        };
-
-        constexpr static Settings settings{};
+        const Settings &settings;
 
         //std::mutex insertMutex;
 //        std::array<Node<Key, Data> *, 100000> deletedNodes;
@@ -171,7 +193,7 @@ namespace BwTree {
 
     public:
 
-        Tree() {
+        Tree(Settings &settings) : settings(settings) {
             Node<Key, Data> *datanode = CreateLeaf<Key, Data>(0, NotExistantPID, NotExistantPID);
             PID dataNodePID = newNode(datanode);
             InnerNode<Key, Data> *innerNode = CreateInnerNode<Key, Data>(1, NotExistantPID, NotExistantPID);

@@ -9,7 +9,6 @@
 using namespace BwTree;
 
 void randomThreadTest() {
-
     std::vector<std::thread> threads;
     constexpr int numberOfThreads = 4;
     constexpr int numberValues = 5000000;
@@ -30,7 +29,11 @@ void randomThreadTest() {
 
 
     auto starttime = std::chrono::system_clock::now();
-    Tree<unsigned long long, unsigned long long> tree;
+
+    std::vector<std::size_t> splitInner{{100}};
+    std::vector<std::size_t> consolidateInner{{2,3,4}};
+    BwTree::Settings settings(200, splitInner, 5, consolidateInner);
+    Tree<unsigned long long, unsigned long long> tree(settings);
 
     std::size_t start = 0;
     std::size_t delta = numberValues / numberOfThreads;
@@ -105,7 +108,10 @@ int main() {
     * - different consolidation, dependant on depth in the tree
     * - generate a lot of numbers
     */
-    Tree<unsigned long, unsigned> a;
+    std::vector<std::size_t> splitInner{{100}};
+    std::vector<std::size_t> consolidateInner{{4}};
+    BwTree::Settings settings(200, splitInner, 5, consolidateInner);
+    Tree<unsigned long, unsigned> a(settings);
     std::unordered_map<unsigned long, unsigned> map;
 
     std::vector<unsigned> values;

@@ -71,20 +71,9 @@ namespace BwTree {
             long removedBySplit = 0;
             while (nextNode != nullptr) {
                 ++pageDepth;
-                if ((pageDepth == settings.ConsolidateLeafPage||pageDepth == settings.ConsolidateInnerPage) && needConsolidatePage.size() == 0 && this->rand(this->d) - level < 40) {//TODO save for later
-                    switch (nextNode->type) {
-                        case PageType::inner: /* fallthrough */
-                        case PageType::deltaSplitInner: /* fallthrough */
-                        case PageType::deltaIndex:
-                            if (pageDepth == settings.ConsolidateInnerPage)pageDepth == settings.ConsolidateLeafPage;
-                            break;
-                        case PageType::leaf:
-                        case PageType::deltaDelete: /* fallthrough */
-                        case PageType::deltaSplit: /* fallthrough */
-                        case PageType::deltaInsert:
-                            if (pageDepth == settings.ConsolidateLeafPage)pageDepth == settings.ConsolidateLeafPage;
-                            break;
-                    }
+                if (needConsolidatePage.size() == 0 && ((pageDepth == settings.getConsolidateLimitLeaf() && (nextNode->type == PageType::inner || nextNode->type == PageType::deltaSplitInner || nextNode->type == PageType::deltaIndex))
+                        || (pageDepth == settings.getConsolidateLimitInner(level) && (nextNode->type == PageType::leaf || nextNode->type == PageType::deltaDelete || nextNode->type == PageType::deltaSplit || nextNode->type == PageType::deltaInsert)))
+                        && this->rand(this->d) - level < 40) {//TODO save for later
                     needConsolidatePage = parentNodes;
                 }
                 switch (nextNode->type) {
@@ -103,7 +92,7 @@ namespace BwTree {
                     };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
-                        if (node1->nodeCount + deltaNodeCount - removedBySplit > settings.SplitInnerPage && needSplitPage.size() == 0 && this->rand(this->d) - level < 10) {
+                        if (node1->nodeCount + deltaNodeCount - removedBySplit > settings.getSplitLimitInner(level) && needSplitPage.size() == 0 && this->rand(this->d) - level < 10) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
@@ -119,7 +108,7 @@ namespace BwTree {
                     };
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
-                        if (node1->recordCount + deltaNodeCount - removedBySplit > settings.SplitLeafPage && needSplitPage.size() == 0) {
+                        if (node1->recordCount + deltaNodeCount - removedBySplit > settings.getSplitLimitLeaf() && needSplitPage.size() == 0) {
                             needSplitPage = parentNodes;
                         }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
@@ -252,7 +241,7 @@ namespace BwTree {
             PID prev, next;
             bool hadInfinityElement;
             std::tie(prev, next, hadInfinityElement) = std::move(getConsolidatedInnerData(node, nodes));
-            if (nodes.size() < settings.SplitInnerPage) {
+            if (nodes.size() < settings.getSplitLimitInner(stack.size())) {
                 return;
             }
             auto middle = nodes.begin();
@@ -272,7 +261,7 @@ namespace BwTree {
             std::vector<std::tuple<Key, const Data *>> records;
             PID prev, next;
             std::tie(prev, next) = getConsolidatedLeafData(node, records);
-            if (records.size() < settings.SplitLeafPage) {
+            if (records.size() < settings.getSplitLimitLeaf()) {
                 return;
             }
             auto middle = records.begin();
