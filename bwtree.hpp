@@ -50,31 +50,36 @@ namespace BwTree {
 
 
     struct Settings {
-        Settings(size_t splitLeaf, std::vector<size_t> const &splitInner, size_t consolidateLeaf, std::vector<size_t> const &consolidateInner)
-                : splitLeaf(splitLeaf),
+        std::string name;
+        Settings(std::string name, size_t splitLeaf, std::vector<size_t> const &splitInner, size_t consolidateLeaf, std::vector<size_t> const &consolidateInner)
+                : name(name), splitLeaf(splitLeaf),
                   splitInner(splitInner),
                   consolidateLeaf(consolidateLeaf),
                   consolidateInner(consolidateInner) {
         }
 
         std::size_t splitLeaf;
-        std::size_t getSplitLimitLeaf() const {
+        const std::size_t &getSplitLimitLeaf() const {
             return splitLeaf;
         }
 
         std::vector<std::size_t> splitInner;
-        std::size_t getSplitLimitInner(unsigned level) const {
+        const std::size_t &getSplitLimitInner(unsigned level) const {
             return level < splitInner.size() ? splitInner[level] : splitInner[splitInner.size()-1];
         }
 
         std::size_t consolidateLeaf;
-        std::size_t getConsolidateLimitLeaf() const {
+        const std::size_t &getConsolidateLimitLeaf() const {
             return consolidateLeaf;
         }
 
         std::vector<std::size_t> consolidateInner;
-        std::size_t getConsolidateLimitInner(unsigned level) const {
+        const std::size_t &getConsolidateLimitInner(unsigned level) const {
             return level < consolidateInner.size() ? consolidateInner[level] : consolidateInner[consolidateInner.size()-1];
+        }
+
+        const std::string &getName() const {
+            return name;
         }
     };
 

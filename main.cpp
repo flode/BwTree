@@ -31,8 +31,8 @@ void randomThreadTest() {
     auto starttime = std::chrono::system_clock::now();
 
     std::vector<std::size_t> splitInner{{100}};
-    std::vector<std::size_t> consolidateInner{{2,3,4}};
-    BwTree::Settings settings(200, splitInner, 5, consolidateInner);
+    std::vector<std::size_t> consolidateInner{{2, 3, 4}};
+    BwTree::Settings settings("default", 200, splitInner, 5, consolidateInner);
     Tree<unsigned long long, unsigned long long> tree(settings);
 
     std::size_t start = 0;
@@ -110,7 +110,7 @@ int main() {
     */
     std::vector<std::size_t> splitInner{{100}};
     std::vector<std::size_t> consolidateInner{{4}};
-    BwTree::Settings settings(200, splitInner, 5, consolidateInner);
+    BwTree::Settings settings("default", 200, splitInner, 5, consolidateInner);
     Tree<unsigned long, unsigned> a(settings);
     std::unordered_map<unsigned long, unsigned> map;
 
