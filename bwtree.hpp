@@ -145,24 +145,23 @@ namespace BwTree {
                 case PageType::inner: /* fallthrough */
                 case PageType::deltaSplitInner: /* fallthrough */
                 case PageType::deltaIndex:
-                    consolidateInnerPage(pid, node);
+                    consolidateInnerPage(pid);
                     break;
                 case PageType::leaf:
                 case PageType::deltaDelete: /* fallthrough */
                 case PageType::deltaSplit: /* fallthrough */
                 case PageType::deltaInsert:
-                    auto a = node->type;
-                    consolidateLeafPage(pid, node);
+                    consolidateLeafPage(pid);
                     break;
             }
         }
 
-        void consolidateInnerPage(PID pid, Node<Key, Data> *node);
+        void consolidateInnerPage(PID pid);
 
         std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>>& returnNodes);
         InnerNode<Key, Data> *createConsolidatedInnerPage(Node<Key, Data> *startNode);
 
-        void consolidateLeafPage(PID pid, Node<Key, Data> *node);
+        void consolidateLeafPage(PID pid);
 
         std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data*>>& returnNodes);
         Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode);

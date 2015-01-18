@@ -39,7 +39,7 @@ namespace BwTree {
             myEpoque = epoque.enterEpoque();
         }
 
-        virtual ~EnterEpoque() {
+        ~EnterEpoque() {
             epoque.leaveEpoque(myEpoque);
         }
 

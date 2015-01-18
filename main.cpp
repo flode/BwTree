@@ -18,7 +18,7 @@ void randomThreadTest() {
     std::uniform_int_distribution<unsigned long long> rand(1, 99999999);
     std::vector<unsigned long long> values(numberValues);
     std::unordered_set<unsigned long long> keys;
-    for (int i = 0; i < numberValues; ++i) {
+    for (std::size_t i = 0; i < numberValues; ++i) {
         unsigned long long val;
         do {
             val = rand(d);
