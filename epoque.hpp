@@ -7,7 +7,7 @@
 namespace BwTree {
     template<typename Key, typename Data>
     class Epoque {
-        static const std::size_t epoquescount{40000};
+        static constexpr std::size_t epoquescount{40000};
         std::atomic<std::size_t> epoques[epoquescount];
         std::array<Node<Key, Data> *, 11> deletedNodes[epoquescount];
         std::atomic<std::size_t> deleteNodeNext[epoquescount];
@@ -61,7 +61,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Epoque<Key, Data>::leaveEpoque(size_t e) {
         openEpoques--;
-        if (--epoques[e] == 0 || !mutex.try_lock()) {
+        if (--epoques[e] > 0 || !mutex.try_lock()) {
             return;
         }
         std::vector<Node<Key, Data> *> nodes;
@@ -106,7 +106,6 @@ namespace BwTree {
         newestEpoque.store((newestEpoque + 1) % epoquescount); // TODO doesn't change newestEpoque
         if (newestEpoque == oldestEpoque) {
             std::cout << " " << newestEpoque << " " << oldestEpoque;
-            //return e;
         }
         assert(newestEpoque != oldestEpoque);// not thread safe
         epoques[newestEpoque].store(1);
