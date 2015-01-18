@@ -12,12 +12,12 @@ void randomThreadTest() {
 
     std::vector<std::thread> threads;
     constexpr int numberOfThreads = 4;
-    constexpr int numberValues = 10000;//numberOfThreads * 30000;
+    constexpr int numberValues = 5000000;
 
 
     std::default_random_engine d;
-    std::uniform_int_distribution<unsigned long long> rand(0, std::numeric_limits<unsigned long long>::max());
-    std::array<unsigned long long, numberValues> values;
+    std::uniform_int_distribution<unsigned long long> rand(1, 99999999);
+    std::vector<unsigned long long> values(numberValues);
     std::unordered_set<unsigned long long> keys;
     for (int i = 0; i < numberValues; ++i) {
         unsigned long long val;
