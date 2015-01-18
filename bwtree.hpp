@@ -79,8 +79,9 @@ namespace BwTree {
 
         struct Settings {
             std::size_t ConsolidateLeafPage = 5;
-            std::size_t SplitLeafPage = 15;
-            std::size_t SplitInnerPage = 10;
+            std::size_t ConsolidateInnerPage = 4;
+            std::size_t SplitLeafPage = 200;
+            std::size_t SplitInnerPage = 100;
         };
 
         constexpr static Settings settings{};

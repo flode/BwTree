@@ -71,7 +71,20 @@ namespace BwTree {
             long removedBySplit = 0;
             while (nextNode != nullptr) {
                 ++pageDepth;
-                if (pageDepth == settings.ConsolidateLeafPage && needConsolidatePage.size() == 0 && this->rand(this->d) - level < 40) {//TODO save for later
+                if ((pageDepth == settings.ConsolidateLeafPage||pageDepth == settings.ConsolidateInnerPage) && needConsolidatePage.size() == 0 && this->rand(this->d) - level < 40) {//TODO save for later
+                    switch (nextNode->type) {
+                        case PageType::inner: /* fallthrough */
+                        case PageType::deltaSplitInner: /* fallthrough */
+                        case PageType::deltaIndex:
+                            if (pageDepth == settings.ConsolidateInnerPage)pageDepth == settings.ConsolidateLeafPage;
+                            break;
+                        case PageType::leaf:
+                        case PageType::deltaDelete: /* fallthrough */
+                        case PageType::deltaSplit: /* fallthrough */
+                        case PageType::deltaInsert:
+                            if (pageDepth == settings.ConsolidateLeafPage)pageDepth == settings.ConsolidateLeafPage;
+                            break;
+                    }
                     needConsolidatePage = parentNodes;
                 }
                 switch (nextNode->type) {
