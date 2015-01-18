@@ -1,17 +1,18 @@
 #ifndef EPOQUE_HPP
 #define EPOQUE_HPP
 
+#include <sys/wait.h>
 #include "nodes.hpp"
 
 namespace BwTree {
     template<typename Key, typename Data>
     class Epoque {
         static const std::size_t epoquescount{40000};
-        std::atomic<unsigned> epoques[epoquescount];
-        std::array<Node<Key, Data> *, 10> deletedNodes[epoquescount];
+        std::atomic<std::size_t> epoques[epoquescount];
+        std::array<Node<Key, Data> *, 11> deletedNodes[epoquescount];
         std::atomic<std::size_t> deleteNodeNext[epoquescount];
-        std::atomic<unsigned> oldestEpoque{0};
-        std::atomic<unsigned> newestEpoque{0};
+        std::atomic<std::size_t> oldestEpoque{0};
+        std::atomic<std::size_t> newestEpoque{0};
 
         std::mutex mutex;
         std::size_t openEpoques = 0;
@@ -21,9 +22,9 @@ namespace BwTree {
             deleteNodeNext[newestEpoque].store(0);
         }
 
-        unsigned enterEpoque();
+        size_t enterEpoque();
 
-        void leaveEpoque(unsigned e);
+        void leaveEpoque(size_t e);
 
         void markForDeletion(Node<Key, Data> *);
     };
@@ -31,7 +32,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     class EnterEpoque {
         Epoque<Key, Data> &epoque;
-        unsigned int myEpoque;
+        std::size_t myEpoque;
 
     public:
         EnterEpoque(Epoque<Key, Data> &epoque) : epoque(epoque) {
@@ -51,44 +52,50 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Epoque<Key, Data>::markForDeletion(Node<Key, Data> *node) {
         std::lock_guard<std::mutex> guard(mutex);
-        unsigned e = newestEpoque % epoquescount;
+        std::size_t e = newestEpoque % epoquescount;
         std::size_t index = deleteNodeNext[e]++;
-        if (index == deletedNodes[e].size())
-            assert(false); //too many deleted nodes
+        assert(index < deletedNodes[e].size());//too many deleted nodes
         deletedNodes[e].at(index) = node;
     }
 
     template<typename Key, typename Data>
-    void Epoque<Key, Data>::leaveEpoque(unsigned e) {
-        std::lock_guard<std::mutex> guard(mutex);
+    void Epoque<Key, Data>::leaveEpoque(size_t e) {
         openEpoques--;
-        unsigned rest = --epoques[e];
-        unsigned oldestEpoque = this->oldestEpoque;
-        if (rest == 0) {
-            unsigned lastEpoque = oldestEpoque;
-            std::vector<Node<Key, Data> *> nodes;
-            for (int i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
-                if (epoques[i] == 0) {
-                    for (int j = 0; j < deleteNodeNext[i]; ++j) {
-                        nodes.push_back(deletedNodes[i].at(j));
-                    }
-                    lastEpoque = (i + 1) % epoquescount;
-                } else {
-                    break;
-                }
-            }
-            if (this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque)) {
-                for (auto &node : nodes) {
-                    freeNodeRecursively<Key, Data>(node);
+        if (--epoques[e] == 0 || !mutex.try_lock()) {
+            return;
+        }
+        std::vector<Node<Key, Data> *> nodes;
+        std::size_t oldestEpoque = this->oldestEpoque;
+        std::size_t lastEpoque = oldestEpoque;
+        int i;
+        for (i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
+            if (epoques[i] == 0) {
+                for (int j = 0; j < deleteNodeNext[i]; ++j) {
+                    nodes.push_back(deletedNodes[i].at(j));
                 }
             } else {
-                std::cerr << "failed";
+                break;
             }
+        }
+        lastEpoque = i;
+        if (oldestEpoque == lastEpoque) {
+            mutex.unlock();
+            return;
+        }
+        bool exchangeSuccessful = this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque);
+        mutex.unlock();
+
+        if (exchangeSuccessful) {
+            for (auto &node : nodes) {
+                freeNodeRecursively<Key, Data>(node);
+            }
+        } else {
+            std::cerr << "failed";
         }
     }
 
     template<typename Key, typename Data>
-    unsigned Epoque<Key, Data>::enterEpoque() {
+    size_t Epoque<Key, Data>::enterEpoque() {
         std::lock_guard<std::mutex> guard(mutex);
         openEpoques++;
         if (openEpoques > 100) {
