@@ -185,7 +185,7 @@ namespace BwTree {
                 DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(res.startNode, std::make_tuple(key, record));
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
-                    free(newNode);
+                    freeNodeSingle<Key, Data>(newNode);
                     insert(key, record);
                     return;
                 } else {
@@ -218,7 +218,7 @@ namespace BwTree {
                 DeltaDelete<Key, Data> *newDeleteNode = CreateDeltaDelete<Key, Data>(res.startNode, key);
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newDeleteNode)) {
                     ++atomicCollisions;
-                    free(newDeleteNode);
+                    freeNodeSingle<Key, Data>(newDeleteNode);
                     deleteKey(key);//TODO without recursion
                     return;
                 }
@@ -298,8 +298,8 @@ namespace BwTree {
         if (!mapping[pid].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
             if (!leaf) ++failedInnerSplit; else ++failedLeafSplit;
-            free(splitNode);
-            free(newRightNode);
+            freeNodeSingle<Key, Data>(splitNode);
+            freeNodeSingle<Key, Data>(newRightNode);
             mapping[newRightNodePID].store(nullptr);
             return;
         } else {
@@ -322,7 +322,7 @@ namespace BwTree {
                 std::get<1>(newRoot->nodes[1]) = newRightNodePID;
                 PID newRootPid = newNode(newRoot);
                 if (!root.compare_exchange_weak(pid, newRootPid)) {
-                    free(newRoot);
+                    freeNodeSingle<Key, Data>(newRoot);
                     ++atomicCollisions;
                     stack.push(root.load());//TODO does this work?
                 } else {
@@ -335,7 +335,7 @@ namespace BwTree {
                 while (true) {
                     DeltaIndex<Key, Data> *indexNode = CreateDeltaIndex(parentNode, Kp, Kq, newRightNodePID, pid);
                     if (!mapping[parentPid].compare_exchange_weak(parentNode, indexNode)) {
-                        free(indexNode);
+                        freeNodeSingle<Key, Data>(indexNode);
                         ++atomicCollisions;
                     } else {
                         return;
@@ -354,7 +354,7 @@ namespace BwTree {
         Node<Key, Data> *previousNode = startNode;
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
-            free(newNode);
+            freeNodeSingle<Key, Data>(newNode);
             ++atomicCollisions;
             ++failedLeafConsolidate;
         } else {
@@ -446,7 +446,7 @@ namespace BwTree {
         Node<Key, Data> *previousNode = startNode;
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
-            free(newNode);
+            freeNodeSingle<Key, Data>(newNode);
             ++atomicCollisions;
             ++failedInnerConsolidate;
         } else {

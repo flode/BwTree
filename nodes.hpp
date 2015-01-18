@@ -34,7 +34,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     struct Leaf : LinkedNode<Key, Data> {
         std::size_t recordCount;
-        // has to be last member for dynamic malloc() !!!
+        // has to be last member for dynamic operator new() !!!
         std::tuple<Key, const Data *> records[];
     private:
         Leaf() = delete;
@@ -46,7 +46,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     struct InnerNode : LinkedNode<Key, Data> {
         std::size_t nodeCount;
-        // has to be last member for dynamic malloc() !!!
+        // has to be last member for dynamic operator new() !!!
         std::tuple<Key, PID> nodes[];
     private:
         InnerNode() = delete;
@@ -107,7 +107,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     InnerNode<Key, Data> *CreateInnerNode(std::size_t size, const PID &next, const PID &prev) {
         size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
-        InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, PID>));
+        InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, PID>));
         output->nodeCount = size;
         output->type = PageType::inner;
         output->next = next;
@@ -118,7 +118,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     Leaf<Key, Data> *CreateLeaf(std::size_t size, const PID &next, const PID &prev) {
         size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
-        Leaf<Key, Data> *output = (Leaf<Key, Data> *) malloc(s + size * sizeof(std::tuple<Key, const Data *>));
+        Leaf<Key, Data> *output = (Leaf<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, const Data *>));
         output->recordCount = size;
         output->type = PageType::leaf;
         output->next = next;
@@ -171,7 +171,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     DeltaInsert<Key, Data> *CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data *> record) {
         size_t s = sizeof(DeltaInsert<Key, Data>);
-        DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) malloc(s);
+        DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) operator new(s);
         output->type = PageType::deltaInsert;
         output->origin = origin;
         output->record = record;
@@ -181,7 +181,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     DeltaDelete<Key, Data> *CreateDeltaDelete(Node<Key, Data> *origin, Key key) {
         size_t s = sizeof(DeltaDelete<Key, Data>);
-        DeltaDelete<Key, Data> *output = (DeltaDelete<Key, Data> *) malloc(s);
+        DeltaDelete<Key, Data> *output = (DeltaDelete<Key, Data> *) operator new(s);
         output->type = PageType::deltaDelete;
         output->origin = origin;
         output->key = key;
@@ -191,7 +191,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     DeltaSplit<Key, Data> *CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink, std::size_t removedElements) {
         size_t s = sizeof(DeltaSplit<Key, Data>);
-        DeltaSplit<Key, Data> *output = (DeltaSplit<Key, Data> *) malloc(s);
+        DeltaSplit<Key, Data> *output = (DeltaSplit<Key, Data> *) operator new(s);
         output->type = PageType::deltaSplit;
         output->origin = origin;
         output->key = splitKey;
@@ -210,7 +210,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     DeltaIndex<Key, Data> *CreateDeltaIndex(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child, PID oldChild) {
         size_t s = sizeof(DeltaIndex<Key, Data>);
-        DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) malloc(s);
+        DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) operator new(s);
         output->type = PageType::deltaIndex;
         output->origin = origin;
         output->keyLeft = splitKeyLeft;
@@ -223,6 +223,10 @@ namespace BwTree {
     template<typename Key, typename Data>
     void freeNodeRecursively(Node<Key, Data> *node);
 
+    template<typename Key, typename Data>
+    void freeNodeSingle(Node<Key, Data> *node) {
+        operator delete(node);
+    }
 
     template<typename Key, typename Data>
     void freeNodeRecursively(Node<Key, Data> *node) {
@@ -230,7 +234,7 @@ namespace BwTree {
             switch (node->type) {
                 case PageType::inner: /* fallthrough */
                 case PageType::leaf: {
-                    free(node);
+                    freeNodeSingle<Key, Data>(node);
                     return;
                 }
                 case PageType::deltaIndex: /* fallthrough */
@@ -240,7 +244,7 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaNode<Key, Data> *>(node);
                     node = node1->origin;
-                    free(node1);
+                    freeNodeSingle<Key, Data>(node1);
                     continue;
                 }
                 default: {
