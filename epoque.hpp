@@ -98,9 +98,7 @@ namespace BwTree {
     size_t Epoque<Key, Data>::enterEpoque() {
         std::lock_guard<std::mutex> guard(mutex);
         openEpoques++;
-        if (openEpoques > 100) {
-            assert(false);
-        }
+        assert(openEpoques < 300);
         if (deleteNodeNext[newestEpoque] == 0) {
             ++epoques[newestEpoque];
             return newestEpoque;
