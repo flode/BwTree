@@ -72,16 +72,16 @@ void randomThreadTest() {
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
     std::cout << "successful leaf consolidation: " << tree.getSuccessfulLeafConsolidate() << std::endl;
     std::cout << "failed leaf consolidation: " << tree.getFailedLeafConsolidate() << std::endl;
-    std::cout << "leaf consolidation time avg: " << tree.getTimeForLeafConsolidation() / tree.getSuccessfulLeafConsolidate() << std::endl;
+    if (tree.getSuccessfulLeafConsolidate() != 0)std::cout << "leaf consolidation time avg: " << tree.getTimeForLeafConsolidation() / tree.getSuccessfulLeafConsolidate() << std::endl;
     std::cout << "successful leaf split: " << tree.getSuccessfulLeafSplit() << std::endl;
     std::cout << "failed leaf split: " << tree.getFailedLeafSplit() << std::endl;
-    std::cout << "leaf split time avg: " << tree.getTimeForLeafSplit() / tree.getSuccessfulLeafSplit() << std::endl;
+    if (tree.getSuccessfulLeafSplit() != 0)std::cout << "leaf split time avg: " << tree.getTimeForLeafSplit() / tree.getSuccessfulLeafSplit() << std::endl;
     std::cout << "successful inner consolidation: " << tree.getSuccessfulInnerConsolidate() << std::endl;
     std::cout << "failed inner consolidation: " << tree.getFailedInnerConsolidate() << std::endl;
-    std::cout << "inner consolidation time avg: " << tree.getTimeForInnerConsolidation() / tree.getSuccessfulInnerConsolidate() << std::endl;
+    if (tree.getSuccessfulInnerConsolidate() != 0)std::cout << "inner consolidation time avg: " << tree.getTimeForInnerConsolidation() / tree.getSuccessfulInnerConsolidate() << std::endl;
     std::cout << "successful inner split: " << tree.getSuccessfulInnerSplit() << std::endl;
     std::cout << "failed innersplit: " << tree.getFailedInnerSplit() << std::endl;
-    std::cout << "inner split time avg: " << tree.getTimeForInnerSplit() / tree.getSuccessfulInnerSplit() << std::endl;
+    if (tree.getSuccessfulInnerSplit() != 0)std::cout << "inner split time avg: " << tree.getTimeForInnerSplit() / tree.getSuccessfulInnerSplit() << std::endl;
 }
 
 int main() {
