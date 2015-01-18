@@ -15,7 +15,7 @@ namespace BwTree {
         std::atomic<std::size_t> newestEpoque{0};
 
         std::mutex mutex;
-        std::size_t openEpoques = 0;
+        std::atomic<std::size_t> openEpoques{0};
     public:
         Epoque() {
             epoques[newestEpoque].store(0);
