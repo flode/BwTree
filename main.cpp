@@ -24,6 +24,7 @@ void randomThreadTest() {
         do {
             val = rand(d);
         } while (keys.find(val) != keys.end());
+        keys.emplace(val);
         values[i] = val;
     }
 
