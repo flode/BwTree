@@ -8,6 +8,110 @@
 
 using namespace BwTree;
 
+void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree);
+
+void testBwTree() {
+    std::cout << "threads, operations,percent read operations, settings, time in ms, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
+            "leaf split time avg, successful inner consolidation, failed inner consolidation, inner consolidation time avg, successful inner split, failed innersplit, inner split time avg" << std::endl;
+
+    std::vector<std::size_t> numberValuesChoice{{1000, 10000, 100000, 1000000, 10000000}};
+    std::default_random_engine d;
+    for (auto &numberValues : numberValuesChoice) {
+        for (int numberOfThreads = 1; numberOfThreads <= 4; ++numberOfThreads) {
+
+            std::uniform_int_distribution<unsigned long long> rand(1, numberValues * 2);
+            std::vector<unsigned long long> values(numberValues);
+            std::unordered_set<unsigned long long> keys;
+            for (std::size_t i = 0; i < numberValues; ++i) {
+                unsigned long long val;
+                do {
+                    val = rand(d);
+                } while (keys.find(val) != keys.end());
+                keys.emplace(val);
+                values[i] = val;
+            }
+
+
+            std::vector<BwTree::Settings> settingsList{{
+                    BwTree::Settings("single", 200, {{100}}, 5, {{5}}),
+                    BwTree::Settings("multiple consolidate", 200, {{100}}, 5, {{2, 3, 4}}),
+                    BwTree::Settings("multiple split and consolidate", 200, {{50, 100, 200}}, 5, {{2, 3, 4}})
+            }};
+            for (auto &settings : settingsList) {
+                std::vector<std::tuple<unsigned long, int>> operationsList{{std::make_tuple(values.size(),66),std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
+                for (const auto &operationsTuple : operationsList) {
+                    Tree<unsigned long long, unsigned long long> tree(settings);
+
+                    auto starttime = std::chrono::system_clock::now();
+
+                    const std::size_t operations = std::get<0>(operationsTuple);
+                    const std::size_t percentRead = std::get<1>(operationsTuple);
+                    std::cout << numberOfThreads << "," << operations << "," << percentRead << "," << settings.getName() << ",";
+
+                    executeBwTree(numberOfThreads, values, operations, percentRead, tree);
+
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
+                    std::cout << duration.count() << ", ";
+
+
+                    std::cout << tree.getAtomicCollisions() << ",";
+                    std::cout << tree.getSuccessfulLeafConsolidate() << ",";
+                    std::cout << tree.getFailedLeafConsolidate() << ",";
+                    if (tree.getSuccessfulLeafConsolidate() != 0)std::cout << tree.getTimeForLeafConsolidation() / tree.getSuccessfulLeafConsolidate();
+                    std::cout << ",";
+                    std::cout << tree.getSuccessfulLeafSplit() << ",";
+                    std::cout << tree.getFailedLeafSplit() << ",";
+                    if (tree.getSuccessfulLeafSplit() != 0)std::cout << tree.getTimeForLeafSplit() / tree.getSuccessfulLeafSplit();
+                    std::cout << ",";
+                    std::cout << tree.getSuccessfulInnerConsolidate() << ",";
+                    std::cout << tree.getFailedInnerConsolidate() << ",";
+                    if (tree.getSuccessfulInnerConsolidate() != 0)std::cout << tree.getTimeForInnerConsolidation() / tree.getSuccessfulInnerConsolidate();
+                    std::cout << ",";
+                    std::cout << tree.getSuccessfulInnerSplit() << ",";
+                    std::cout << tree.getFailedInnerSplit() << ",";
+                    if (tree.getSuccessfulInnerSplit() != 0)std::cout << tree.getTimeForInnerSplit() / tree.getSuccessfulInnerSplit();
+                    std::cout << ",";
+                    std::cout << std::endl;
+                }
+            }
+        };
+
+    }
+};
+
+void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree) {
+    std::default_random_engine d;
+    std::uniform_int_distribution<unsigned> rand(1, 100);
+
+    std::vector<std::thread> threads;
+    std::atomic<int> c{0};
+    std::size_t start = 0;
+    std::size_t delta = values.size() / numberOfThreads;
+    std::size_t startOps = 0;
+    std::size_t deltaOps = operations / numberOfThreads;
+    for (std::size_t i = 0; i < numberOfThreads; ++i) {
+        threads.push_back(std::thread([&tree, &values, start, delta, deltaOps, &rand, &d, &percentRead]() {
+            std::size_t writeOperations = 0;
+            for (std::size_t i = 0; i < deltaOps; ++i) {
+                if ((writeOperations != 0 && rand(d) < percentRead) || writeOperations == delta) {
+                    std::uniform_int_distribution<std::size_t> randRead(1, writeOperations);
+                    tree.search(values[start + randRead(d)]);
+                } else {
+                    tree.insert(values[start + writeOperations], &values[start + writeOperations]);
+                    writeOperations++;
+                }
+            }
+        }));
+        start += delta;
+        startOps += deltaOps;
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
+    }
+}
+
+
 void randomThreadTest() {
     std::vector<std::thread> threads;
     constexpr int numberOfThreads = 4;
@@ -85,7 +189,8 @@ void randomThreadTest() {
 }
 
 int main() {
-    randomThreadTest();
+    testBwTree();
+    //randomThreadTest();
     return 0;
     /**
     * Tasks for next week (3.12.2014)
