@@ -368,7 +368,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     std::tuple<PID, PID> Tree<Key, Data>::getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &records) {
-        std::unordered_map<Key, bool> consideredKeys;
+        std::array<Key, 20> consideredKeys;
+        consideredKeys.fill(std::numeric_limits<Key>::max());//TODO do not allow this key for insert
+        std::size_t consideredKeysNextIndex = 0;
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
@@ -378,9 +380,8 @@ namespace BwTree {
                     auto node1 = static_cast<Leaf<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->recordCount; ++i) {
                         auto &curKey = std::get<0>(node1->records[i]);
-                        if (curKey <= stopAtKey && consideredKeys.find(curKey) == consideredKeys.end()) {
+                        if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.end(), curKey) == consideredKeys.end()) {
                             records.push_back(node1->records[i]);
-                            consideredKeys[curKey] = true;
                         }
                     }
                     prev = node1->prev;
@@ -393,17 +394,20 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey <= stopAtKey && consideredKeys.find(curKey) == consideredKeys.end()) {
+                    if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.end(), curKey) == consideredKeys.end()) {
                         records.push_back(node1->record);
-                        consideredKeys[curKey] = true;
+                        consideredKeys[consideredKeysNextIndex++] = curKey;
+                        assert(consideredKeysNextIndex != consideredKeys.size());
                     }
                     node = node1->origin;
                     continue;
                 }
                 case PageType::deltaDelete: {
                     auto node1 = static_cast<DeltaDelete<Key, Data> *>(node);
-                    if (consideredKeys.find(node1->key) == consideredKeys.end()) {
-                        consideredKeys[node1->key] = true;
+                    auto &curKey = node1->key;
+                    if (std::find(consideredKeys.begin(), consideredKeys.end(), curKey) == consideredKeys.end()) {
+                        consideredKeys[consideredKeysNextIndex++] = curKey;
+                        assert(consideredKeysNextIndex != consideredKeys.size());
                     }
                     node = node1->origin;
                     continue;
@@ -460,7 +464,10 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>> &nodes) {
-        std::unordered_set<PID> consideredPIDs;
+        std::array<PID, 20> consideredPIDs;
+        consideredPIDs.fill(NotExistantPID);
+        std::size_t consideredPIDsNextIndex = 0;
+
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
@@ -471,7 +478,7 @@ namespace BwTree {
                     auto node1 = static_cast<InnerNode<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->nodeCount; ++i) {
                         auto &curKey = std::get<0>(node1->nodes[i]);
-                        if (curKey <= stopAtKey && consideredPIDs.find(std::get<1>(node1->nodes[i])) == consideredPIDs.end()) {
+                        if (curKey <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.end(), std::get<1>(node1->nodes[i])) == consideredPIDs.end()) {
                             nodes.push_back(node1->nodes[i]);
                         }
                     }
@@ -488,13 +495,15 @@ namespace BwTree {
                 case PageType::deltaIndex: {
                     auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
                     if (node1->keyRight <= stopAtKey) {
-                        if (consideredPIDs.find(node1->oldChild) == consideredPIDs.end()) {
+                        if (std::find(consideredPIDs.begin(), consideredPIDs.end(), node1->oldChild) == consideredPIDs.end()) {
                             nodes.push_back(std::make_tuple(node1->keyLeft, node1->oldChild));
-                            consideredPIDs.emplace(node1->oldChild);
+                            consideredPIDs[consideredPIDsNextIndex++] = node1->oldChild;
+                            assert(consideredPIDsNextIndex != consideredPIDs.size());
                         }
-                        if (consideredPIDs.find(node1->child) == consideredPIDs.end()) {
+                        if (std::find(consideredPIDs.begin(), consideredPIDs.end(), node1->child) == consideredPIDs.end()) {
                             nodes.push_back(std::make_tuple(node1->keyRight, node1->child));
-                            consideredPIDs.emplace(node1->child);
+                            consideredPIDs[consideredPIDsNextIndex++] = node1->child;
+                            assert(consideredPIDsNextIndex != consideredPIDs.size());
                         }
                     }
                     node = node1->origin;
