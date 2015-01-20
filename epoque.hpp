@@ -64,7 +64,8 @@ namespace BwTree {
         if (--epoques[e] > 0 || !mutex.try_lock()) {
             return;
         }
-        std::vector<Node<Key, Data> *> nodes;
+        static thread_local std::vector<Node<Key, Data> *> nodes;
+        nodes.clear();
         std::size_t oldestEpoque = this->oldestEpoque;
         std::size_t i;
         for (i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {

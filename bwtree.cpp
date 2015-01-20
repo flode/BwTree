@@ -243,7 +243,9 @@ namespace BwTree {
         LinkedNode<Key, Data> *newRightNode;
         std::size_t removedElements;
         if (!leaf) {
-            std::vector<std::tuple<Key, PID>> nodes;
+            static thread_local std::vector<std::tuple<Key, PID>> nodesStatic;
+            std::vector<std::tuple<Key, PID>> &nodes = nodesStatic;
+            nodes.clear();
             PID prev, next;
             bool hadInfinityElement;
             std::tie(prev, next, hadInfinityElement) = std::move(getConsolidatedInnerData(node, nodes));
@@ -264,7 +266,9 @@ namespace BwTree {
             removedElements = newRightInner->nodeCount;
             newRightNode = newRightInner;
         } else {
-            std::vector<std::tuple<Key, const Data *>> records;
+            static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
+            std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
+            records.clear();
             PID prev, next;
             std::tie(prev, next) = getConsolidatedLeafData(node, records);
             if (records.size() < settings.getSplitLimitLeaf()) {
@@ -434,7 +438,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *node) {
-        std::vector<std::tuple<Key, const Data *>> records;
+        static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
+        std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
+        records.clear();
         PID prev, next;
         std::tie(prev, next) = getConsolidatedLeafData(node, records);
 
@@ -530,7 +536,9 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     InnerNode<Key, Data> *Tree<Key, Data>::createConsolidatedInnerPage(Node<Key, Data> *node) {
-        std::vector<std::tuple<Key, PID>> nodes;
+        static thread_local std::vector<std::tuple<Key, PID>> nodesStatic;
+        std::vector<std::tuple<Key, PID>> &nodes = nodesStatic;
+        nodes.clear();
         PID prev, next;
         bool hadInfinityElement;
         std::tie(prev, next, hadInfinityElement) = std::move(getConsolidatedInnerData(node, nodes));
