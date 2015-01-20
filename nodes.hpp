@@ -36,6 +36,17 @@ namespace BwTree {
         std::size_t recordCount;
         // has to be last member for dynamic operator new() !!!
         std::tuple<Key, const Data *> records[];
+
+        static Leaf<Key, Data> *create(std::size_t size, const PID &next, const PID &prev) {
+            size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
+            Leaf<Key, Data> *output = (Leaf<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, const Data *>));
+            output->recordCount = size;
+            output->type = PageType::leaf;
+            output->next = next;
+            output->prev = prev;
+            return output;
+        }
+
     private:
         Leaf() = delete;
 
@@ -48,6 +59,17 @@ namespace BwTree {
         std::size_t nodeCount;
         // has to be last member for dynamic operator new() !!!
         std::tuple<Key, PID> nodes[];
+
+        static InnerNode<Key, Data> *create(std::size_t size, const PID &next, const PID &prev) {
+            size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
+            InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, PID>));
+            output->nodeCount = size;
+            output->type = PageType::inner;
+            output->next = next;
+            output->prev = prev;
+            return output;
+        }
+
     private:
         InnerNode() = delete;
 
@@ -67,15 +89,37 @@ namespace BwTree {
     struct DeltaInsert : DeltaNode<Key, Data> {
         std::tuple<Key, const Data *> record;
         bool keyExistedBefore;
+
+        static DeltaInsert<Key, Data> *create(Node<Key, Data> *origin, const std::tuple<Key, const Data *> record, bool keyExistedBefore) {
+            size_t s = sizeof(DeltaInsert<Key, Data>);
+            DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) operator new(s);
+            output->type = PageType::deltaInsert;
+            output->origin = origin;
+            output->record = record;
+            output->keyExistedBefore = keyExistedBefore;
+            return output;
+        }
+
     private:
         DeltaInsert() = delete;
 
         ~DeltaInsert() = delete;
+
     };
 
     template<typename Key, typename Data>
     struct DeltaDelete : DeltaNode<Key, Data> {
         Key key;
+
+        static DeltaDelete<Key, Data> *create(Node<Key, Data> *origin, Key key) {
+            size_t s = sizeof(DeltaDelete<Key, Data>);
+            DeltaDelete<Key, Data> *output = (DeltaDelete<Key, Data> *) operator new(s);
+            output->type = PageType::deltaDelete;
+            output->origin = origin;
+            output->key = key;
+            return output;
+        }
+
     private:
         DeltaDelete() = delete;
 
@@ -87,6 +131,23 @@ namespace BwTree {
         Key key;
         PID sidelink;
         std::size_t removedElements;
+
+        static DeltaSplit<Key, Data> *create(Node<Key, Data> *origin, Key splitKey, PID sidelink, std::size_t removedElements, bool leaf) {
+            size_t s = sizeof(DeltaSplit<Key, Data>);
+            DeltaSplit<Key, Data> *output = (DeltaSplit<Key, Data> *) operator new(s);
+            if (leaf) {
+                output->type = PageType::deltaSplit;
+            } else {
+                output->type = PageType::deltaSplitInner;
+            }
+            output->origin = origin;
+            output->key = splitKey;
+            output->sidelink = sidelink;
+            output->removedElements = removedElements;
+
+            return output;
+        }
+
     private:
         DeltaSplit() = delete;
 
@@ -99,33 +160,24 @@ namespace BwTree {
         Key keyRight; // less or equal than
         PID child;
         PID oldChild;
+
+        static DeltaIndex<Key, Data> *create(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child, PID oldChild) {
+            size_t s = sizeof(DeltaIndex<Key, Data>);
+            DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) operator new(s);
+            output->type = PageType::deltaIndex;
+            output->origin = origin;
+            output->keyLeft = splitKeyLeft;
+            output->keyRight = splitKeyRight;
+            output->child = child;
+            output->oldChild = oldChild;
+            return output;
+        }
     private:
         DeltaIndex() = delete;
 
         ~DeltaIndex() = delete;
     };
 
-    template<typename Key, typename Data>
-    InnerNode<Key, Data> *CreateInnerNode(std::size_t size, const PID &next, const PID &prev) {
-        size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
-        InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, PID>));
-        output->nodeCount = size;
-        output->type = PageType::inner;
-        output->next = next;
-        output->prev = prev;
-        return output;
-    }
-
-    template<typename Key, typename Data>
-    Leaf<Key, Data> *CreateLeaf(std::size_t size, const PID &next, const PID &prev) {
-        size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
-        Leaf<Key, Data> *output = (Leaf<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, const Data *>));
-        output->recordCount = size;
-        output->type = PageType::leaf;
-        output->next = next;
-        output->prev = prev;
-        return output;
-    }
 
     template<typename Key, typename Data>
     class Helper {
@@ -139,7 +191,7 @@ namespace BwTree {
 
         static InnerNode<Key, Data> *CreateInnerNodeFromUnsorted(InnerIterator begin, InnerIterator end, const PID &next, const PID &prev, bool infinityElement) {
             // construct a new node
-            auto newNode = CreateInnerNode<Key, Data>(std::distance(begin, end), next, prev);
+            auto newNode = InnerNode<Key, Data>::create(std::distance(begin, end), next, prev);
             std::sort(begin, end, [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
                 return std::get<0>(t1) < std::get<0>(t2);
             });
@@ -155,9 +207,9 @@ namespace BwTree {
 
         typedef typename std::vector<std::tuple<Key, const Data *>>::iterator LeafIterator;
 
-        static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &next, const PID &prev) {
+        static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &next, const PID &prev) {//TODO prev next
             // construct a new node
-            auto newNode = CreateLeaf<Key, Data>(std::distance(begin, end), next, prev);
+            auto newNode = Leaf<Key, Data>::create(std::distance(begin, end), next, prev);
             std::sort(begin, end, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
                 return std::get<0>(t1) < std::get<0>(t2);
             });
@@ -168,59 +220,6 @@ namespace BwTree {
             return newNode;
         }
     };
-
-    template<typename Key, typename Data>
-    DeltaInsert<Key, Data> *CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data *> record, bool keyExistedBefore) {
-        size_t s = sizeof(DeltaInsert<Key, Data>);
-        DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) operator new(s);
-        output->type = PageType::deltaInsert;
-        output->origin = origin;
-        output->record = record;
-        output->keyExistedBefore = keyExistedBefore;
-        return output;
-    }
-
-    template<typename Key, typename Data>
-    DeltaDelete<Key, Data> *CreateDeltaDelete(Node<Key, Data> *origin, Key key) {
-        size_t s = sizeof(DeltaDelete<Key, Data>);
-        DeltaDelete<Key, Data> *output = (DeltaDelete<Key, Data> *) operator new(s);
-        output->type = PageType::deltaDelete;
-        output->origin = origin;
-        output->key = key;
-        return output;
-    }
-
-    template<typename Key, typename Data>
-    DeltaSplit<Key, Data> *CreateDeltaSplit(Node<Key, Data> *origin, Key splitKey, PID sidelink, std::size_t removedElements) {
-        size_t s = sizeof(DeltaSplit<Key, Data>);
-        DeltaSplit<Key, Data> *output = (DeltaSplit<Key, Data> *) operator new(s);
-        output->type = PageType::deltaSplit;
-        output->origin = origin;
-        output->key = splitKey;
-        output->sidelink = sidelink;
-        output->removedElements = removedElements;
-        return output;
-    }
-
-    template<typename Key, typename Data>
-    DeltaSplit<Key, Data> *CreateDeltaSplitInner(Node<Key, Data> *origin, Key splitKey, PID sidelink, std::size_t removedElements) {
-        DeltaSplit<Key, Data> *output = CreateDeltaSplit(origin, splitKey, sidelink, removedElements);
-        output->type = PageType::deltaSplitInner;
-        return output;
-    }
-
-    template<typename Key, typename Data>
-    DeltaIndex<Key, Data> *CreateDeltaIndex(Node<Key, Data> *origin, Key splitKeyLeft, Key splitKeyRight, PID child, PID oldChild) {
-        size_t s = sizeof(DeltaIndex<Key, Data>);
-        DeltaIndex<Key, Data> *output = (DeltaIndex<Key, Data> *) operator new(s);
-        output->type = PageType::deltaIndex;
-        output->origin = origin;
-        output->keyLeft = splitKeyLeft;
-        output->keyRight = splitKeyRight;
-        output->child = child;
-        output->oldChild = oldChild;
-        return output;
-    }
 
     template<typename Key, typename Data>
     void freeNodeRecursively(Node<Key, Data> *node);

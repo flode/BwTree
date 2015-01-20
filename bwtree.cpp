@@ -244,7 +244,7 @@ namespace BwTree {
             case PageType::deltaDelete:
             case PageType::deltaSplit:
             case PageType::leaf: {
-                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
+                DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
                     freeNodeSingle<Key, Data>(newNode);
@@ -277,7 +277,7 @@ namespace BwTree {
             case PageType::deltaDelete:
             case PageType::deltaInsert:
             case PageType::leaf: {
-                DeltaDelete<Key, Data> *newDeleteNode = CreateDeltaDelete<Key, Data>(res.startNode, key);
+                DeltaDelete<Key, Data> *newDeleteNode = DeltaDelete<Key, Data>::create(res.startNode, key);
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newDeleteNode)) {
                     ++atomicCollisions;
                     freeNodeSingle<Key, Data>(newDeleteNode);
@@ -359,11 +359,8 @@ namespace BwTree {
         newRightNode->prev = needSplitPage;
         const PID newRightNodePID = newNode(newRightNode);
         DeltaSplit<Key, Data> *splitNode;
-        if (!leaf) {
-            splitNode = CreateDeltaSplitInner(startNode, Kp, newRightNodePID, removedElements);
-        } else {
-            splitNode = CreateDeltaSplit(startNode, Kp, newRightNodePID, removedElements);
-        }
+
+        splitNode = DeltaSplit<Key, Data>::create(startNode, Kp, newRightNodePID, removedElements, leaf);
 
         if (!mapping[needSplitPage].compare_exchange_weak(startNode, splitNode)) {
             ++atomicCollisions;
@@ -385,7 +382,7 @@ namespace BwTree {
         }
 
         if (needSplitPageParent == NotExistantPID) {
-            InnerNode<Key, Data> *newRoot = CreateInnerNode<Key, Data>(2, NotExistantPID, NotExistantPID);
+            InnerNode<Key, Data> *newRoot = InnerNode<Key, Data>::create(2, NotExistantPID, NotExistantPID);
             std::get<0>(newRoot->nodes[0]) = Kp;
             std::get<1>(newRoot->nodes[0]) = needSplitPage;
             std::get<0>(newRoot->nodes[1]) = std::numeric_limits<Key>::max();
@@ -404,7 +401,7 @@ namespace BwTree {
         while (true) {
             Node<Key, Data> *parentNode = PIDToNodePtr(needSplitPageParent);
             assert(parentNode->type == PageType::inner || parentNode->type == PageType::deltaIndex || parentNode->type == PageType::deltaSplitInner);
-            DeltaIndex<Key, Data> *indexNode = CreateDeltaIndex(parentNode, Kp, Kq, newRightNodePID, needSplitPage);
+            DeltaIndex<Key, Data> *indexNode = DeltaIndex<Key, Data>::create(parentNode, Kp, Kq, newRightNodePID, needSplitPage);
             if (!mapping[needSplitPageParent].compare_exchange_weak(parentNode, indexNode)) {
                 freeNodeSingle<Key, Data>(indexNode);
                 ++atomicCollisions;
@@ -475,7 +472,7 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey <= stopAtKey && std::find(consideredKeys.begin(),consideredKeys.begin() + consideredKeysNextIndex, curKey) ==consideredKeys.begin() + consideredKeysNextIndex) {
+                    if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNextIndex, curKey) == consideredKeys.begin() + consideredKeysNextIndex) {
                         records.push_back(node1->record);
                         if (node1->keyExistedBefore) {
                             consideredKeys[consideredKeysNextIndex++] = curKey;
@@ -488,7 +485,7 @@ namespace BwTree {
                 case PageType::deltaDelete: {
                     auto node1 = static_cast<DeltaDelete<Key, Data> *>(node);
                     auto &curKey = node1->key;
-                    if (std::find(consideredKeys.begin(),consideredKeys.begin() + consideredKeysNextIndex, curKey) ==consideredKeys.begin() + consideredKeysNextIndex) {
+                    if (std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNextIndex, curKey) == consideredKeys.begin() + consideredKeysNextIndex) {
                         consideredKeys[consideredKeysNextIndex++] = curKey;
                         assert(consideredKeysNextIndex != consideredKeys.size());
                     }

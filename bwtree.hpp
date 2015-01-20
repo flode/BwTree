@@ -192,9 +192,9 @@ namespace BwTree {
     public:
 
         Tree(Settings &settings) : settings(settings) {
-            Node<Key, Data> *datanode = CreateLeaf<Key, Data>(0, NotExistantPID, NotExistantPID);
+            Node<Key, Data> *datanode = Leaf<Key, Data>::create(0, NotExistantPID, NotExistantPID);
             PID dataNodePID = newNode(datanode);
-            InnerNode<Key, Data> *innerNode = CreateInnerNode<Key, Data>(1, NotExistantPID, NotExistantPID);
+            InnerNode<Key, Data> *innerNode = InnerNode<Key, Data>::create(1, NotExistantPID, NotExistantPID);
             innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(), dataNodePID);
             root = newNode(innerNode);
         }
