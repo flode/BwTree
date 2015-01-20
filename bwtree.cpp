@@ -325,7 +325,7 @@ namespace BwTree {
 
             Kp = std::get<0>(*middle);
 
-            auto newRightInner = Helper<Key, Data>::CreateInnerNodeFromUnsorted(middle + 1, nodes.end(), next, needSplitPage, hadInfinityElement);
+            auto newRightInner = Helper<Key, Data>::CreateInnerNodeFromUnsorted(middle + 1, nodes.end(), needSplitPage, next, hadInfinityElement);
             assert(newRightInner->nodeCount > 0);
             Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
             removedElements = newRightInner->nodeCount;
@@ -348,7 +348,7 @@ namespace BwTree {
 
             Kp = std::get<0>(*middle);
 
-            auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromUnsorted(middle + 1, records.end(), next, needSplitPage);
+            auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromUnsorted(middle + 1, records.end(), needSplitPage, next);
             assert(newRightLeaf->recordCount > 0);
             Kq = std::get<0>(newRightLeaf->records[newRightLeaf->recordCount - 1]);
             removedElements = newRightLeaf->recordCount;
@@ -427,7 +427,7 @@ namespace BwTree {
         records.clear();
         PID prev, next;
         std::tie(prev, next) = getConsolidatedLeafData(startNode, records);
-        Leaf<Key, Data> *newNode = Helper<Key, Data>::CreateLeafNodeFromUnsorted(records.begin(), records.end(), next, prev);
+        Leaf<Key, Data> *newNode = Helper<Key, Data>::CreateLeafNodeFromUnsorted(records.begin(), records.end(), prev, next);
 
         Node<Key, Data> *previousNode = startNode;
 
@@ -522,7 +522,7 @@ namespace BwTree {
         PID prev, next;
         bool hadInfinityElement;
         std::tie(prev, next, hadInfinityElement) = getConsolidatedInnerData(startNode, pid, nodes);
-        InnerNode<Key, Data> *newNode = Helper<Key, Data>::CreateInnerNodeFromUnsorted(nodes.begin(), nodes.end(), next, prev, hadInfinityElement);
+        InnerNode<Key, Data> *newNode = Helper<Key, Data>::CreateInnerNodeFromUnsorted(nodes.begin(), nodes.end(), prev, next, hadInfinityElement);
 
         Node<Key, Data> *const previousNode = startNode;
 

@@ -37,7 +37,7 @@ namespace BwTree {
         // has to be last member for dynamic operator new() !!!
         std::tuple<Key, const Data *> records[];
 
-        static Leaf<Key, Data> *create(std::size_t size, const PID &next, const PID &prev) {
+        static Leaf<Key, Data> *create(std::size_t size, const PID &prev, const PID &next) {
             size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
             Leaf<Key, Data> *output = (Leaf<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, const Data *>));
             output->recordCount = size;
@@ -60,7 +60,7 @@ namespace BwTree {
         // has to be last member for dynamic operator new() !!!
         std::tuple<Key, PID> nodes[];
 
-        static InnerNode<Key, Data> *create(std::size_t size, const PID &next, const PID &prev) {
+        static InnerNode<Key, Data> *create(std::size_t size, const PID &prev, const PID &next) {
             size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
             InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, PID>));
             output->nodeCount = size;
@@ -172,6 +172,7 @@ namespace BwTree {
             output->oldChild = oldChild;
             return output;
         }
+
     private:
         DeltaIndex() = delete;
 
@@ -189,9 +190,9 @@ namespace BwTree {
     public:
         typedef typename std::vector<std::tuple<Key, PID>>::iterator InnerIterator;
 
-        static InnerNode<Key, Data> *CreateInnerNodeFromUnsorted(InnerIterator begin, InnerIterator end, const PID &next, const PID &prev, bool infinityElement) {
+        static InnerNode<Key, Data> *CreateInnerNodeFromUnsorted(InnerIterator begin, InnerIterator end, const PID &prev, const PID &next, bool infinityElement) {
             // construct a new node
-            auto newNode = InnerNode<Key, Data>::create(std::distance(begin, end), next, prev);
+            auto newNode = InnerNode<Key, Data>::create(std::distance(begin, end), prev, next);
             std::sort(begin, end, [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
                 return std::get<0>(t1) < std::get<0>(t2);
             });
@@ -207,9 +208,9 @@ namespace BwTree {
 
         typedef typename std::vector<std::tuple<Key, const Data *>>::iterator LeafIterator;
 
-        static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &next, const PID &prev) {//TODO prev next
+        static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &prev, const PID &next) {
             // construct a new node
-            auto newNode = Leaf<Key, Data>::create(std::distance(begin, end), next, prev);
+            auto newNode = Leaf<Key, Data>::create(std::distance(begin, end), prev, next);
             std::sort(begin, end, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
                 return std::get<0>(t1) < std::get<0>(t2);
             });
