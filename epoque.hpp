@@ -9,7 +9,7 @@ namespace BwTree {
     class Epoque {
         static constexpr std::size_t epoquescount{40000};
         std::atomic<std::size_t> epoques[epoquescount];
-        std::array<Node<Key, Data> *, 11> deletedNodes[epoquescount];
+        std::vector<std::array<Node<Key, Data> *, 11>> deletedNodes{epoquescount};
         std::atomic<std::size_t> deleteNodeNext[epoquescount];
         std::atomic<std::size_t> oldestEpoque{0};
         std::atomic<std::size_t> newestEpoque{0};
@@ -59,31 +59,29 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Epoque<Key, Data>::leaveEpoque(size_t e) {
+    void Epoque<Key, Data>::leaveEpoque(const size_t e) {
         openEpoques--;
         if (--epoques[e] > 0 || !mutex.try_lock()) {
             return;
         }
         std::vector<Node<Key, Data> *> nodes;
         std::size_t oldestEpoque = this->oldestEpoque;
-        std::size_t lastEpoque = oldestEpoque;
-        int i;
+        std::size_t i;
         for (i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
             if (epoques[i] == 0) {
-                for (int j = 0; j < deleteNodeNext[i]; ++j) {
+                for (std::size_t j = 0, end = deleteNodeNext[i]; j < end; ++j) {
                     nodes.push_back(deletedNodes[i].at(j));
                 }
             } else {
                 break;
             }
         }
-        lastEpoque = i;
+        std::size_t lastEpoque = i;
         if (oldestEpoque == lastEpoque) {
             mutex.unlock();
             return;
         }
         bool exchangeSuccessful = this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque);
-        mutex.unlock();
 
         if (exchangeSuccessful) {
             for (auto &node : nodes) {
@@ -92,6 +90,7 @@ namespace BwTree {
         } else {
             std::cerr << "failed";
         }
+        mutex.unlock();
     }
 
     template<typename Key, typename Data>
