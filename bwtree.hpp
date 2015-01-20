@@ -52,6 +52,7 @@ namespace BwTree {
 
     struct Settings {
         std::string name;
+
         Settings(std::string name, size_t splitLeaf, std::vector<size_t> const &splitInner, size_t consolidateLeaf, std::vector<size_t> const &consolidateInner)
                 : name(name), splitLeaf(splitLeaf),
                   splitInner(splitInner),
@@ -60,23 +61,27 @@ namespace BwTree {
         }
 
         std::size_t splitLeaf;
+
         const std::size_t &getSplitLimitLeaf() const {
             return splitLeaf;
         }
 
         std::vector<std::size_t> splitInner;
+
         const std::size_t &getSplitLimitInner(unsigned level) const {
-            return level < splitInner.size() ? splitInner[level] : splitInner[splitInner.size()-1];
+            return level < splitInner.size() ? splitInner[level] : splitInner[splitInner.size() - 1];
         }
 
         std::size_t consolidateLeaf;
+
         const std::size_t &getConsolidateLimitLeaf() const {
             return consolidateLeaf;
         }
 
         std::vector<std::size_t> consolidateInner;
+
         const std::size_t &getConsolidateLimitInner(unsigned level) const {
-            return level < consolidateInner.size() ? consolidateInner[level] : consolidateInner[consolidateInner.size()-1];
+            return level < consolidateInner.size() ? consolidateInner[level] : consolidateInner[consolidateInner.size() - 1];
         }
 
         const std::string &getName() const {
@@ -108,9 +113,11 @@ namespace BwTree {
         std::atomic<long> timeForLeafConsolidation{0};
         std::atomic<long> timeForInnerConsolidation{0};
         std::atomic<long> timeForLeafSplit{0};
+
         std::atomic<long> timeForInnerSplit{0};
 
         Epoque<Key, Data> epoque;
+
 
         const Settings &settings;
 
@@ -177,12 +184,11 @@ namespace BwTree {
             return false;
         }
 
-
         template<typename T>
         static size_t binarySearch(T array, std::size_t length, Key key);
 
         std::default_random_engine d;
-        std::uniform_int_distribution<int> rand{0,100};
+        std::uniform_int_distribution<int> rand{0, 100};
 
     public:
 
