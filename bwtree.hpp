@@ -17,26 +17,27 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     struct FindDataPageResult {
-        PID pid;
-        Node<Key, Data> *startNode;
-        Node<Key, Data> *dataNode;
-        Key key;
-        const Data *data;
-        std::stack<PID> needConsolidatePage;
-        std::stack<PID> needSplitPage;
-        std::stack<PID> parentNodes;
+        const PID pid;
+        Node<Key, Data> * startNode;
+        const Node<Key, Data> * const dataNode;
+        const Key key = NotExistantPID;
+        const Data * const data = nullptr;
+        const PID needConsolidatePage;
+        const PID needSplitPage;
+        const PID needSplitPageParent;
 
 
-        FindDataPageResult(PID pid, Node<Key, Data> *startNode, Node<Key, Data> *dataNode, std::stack<PID> const &needConsolidatePage, std::stack<PID> const &needSplitPage, std::stack<PID> const &parentNodes)
+        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
                 : pid(pid),
                   startNode(startNode),
                   dataNode(dataNode),
                   needConsolidatePage(needConsolidatePage),
                   needSplitPage(needSplitPage),
-                  parentNodes(parentNodes) {
+                  needSplitPageParent(needSplitPageParent) {
         }
 
-        FindDataPageResult(PID pid, Node<Key, Data> *startNode, Node<Key, Data> *dataNode, Key key, Data const *data, std::stack<PID> const &&needConsolidatePage, std::stack<PID> const &&needSplitPage, std::stack<PID> const &&parentNodes)
+
+        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Key const key, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
                 : pid(pid),
                   startNode(startNode),
                   dataNode(dataNode),
@@ -44,7 +45,7 @@ namespace BwTree {
                   data(data),
                   needConsolidatePage(needConsolidatePage),
                   needSplitPage(needSplitPage),
-                  parentNodes(parentNodes) {
+                  needSplitPageParent(needSplitPageParent) {
         }
     };
 
@@ -117,7 +118,7 @@ namespace BwTree {
 //        std::array<Node<Key, Data> *, 100000> deletedNodes;
 //        std::atomic<std::size_t> deleteNodeNext{0};
 
-        Node<Key, Data> *PIDToNodePtr(PID node) {
+        Node<Key, Data> *PIDToNodePtr(const PID node) {
             return mapping[node];
         }
 
@@ -137,56 +138,44 @@ namespace BwTree {
         */
         FindDataPageResult<Key, Data> findDataPage(Key key);
 
-        void consolidatePage(std::stack<PID> &&stack) {//TODO add to a list
-            PID pid = stack.top();
-            stack.pop();
-            Node<Key, Data> *node = mapping[pid];
-            switch (node->type) {
-                case PageType::inner: /* fallthrough */
-                case PageType::deltaSplitInner: /* fallthrough */
-                case PageType::deltaIndex:
-                    consolidateInnerPage(pid);
-                    break;
-                case PageType::leaf:
-                case PageType::deltaDelete: /* fallthrough */
-                case PageType::deltaSplit: /* fallthrough */
-                case PageType::deltaInsert:
-                    consolidateLeafPage(pid);
-                    break;
+        void consolidatePage(const PID pid) {//TODO add to a list
+            Node<Key, Data> *node = PIDToNodePtr(pid);
+            if (isLeaf(node)) {
+                consolidateLeafPage(pid, node);
+            } else {
+                consolidateInnerPage(pid, node);
             }
         }
 
-        void consolidateInnerPage(PID pid);
+        void consolidateInnerPage(PID pid, Node<Key, Data> *startNode);
 
-        std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, std::vector<std::tuple<Key, PID>>& returnNodes);
-        InnerNode<Key, Data> *createConsolidatedInnerPage(Node<Key, Data> *startNode);
+        std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<std::tuple<Key, PID>> &returnNodes);
 
-        void consolidateLeafPage(PID pid);
+        void consolidateLeafPage(PID pid, Node<Key, Data> *startNode);
 
-        std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data*>>& returnNodes);
+        std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &returnNodes);
+
         Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode);
 
-        void splitPage(std::stack<PID> &&stack) {
-            PID pid = stack.top();
-            stack.pop();
-            Node<Key, Data> *node = mapping[pid];
+        void splitPage(const PID needSplitPage, const PID needSplitPageParent);
+
+        std::tuple<PID, Node<Key, Data> *> findInnerNodeOnLevel(PID pid, Key key);
+
+        bool isLeaf(Node<Key, Data> *node) {
             switch (node->type) {
                 case PageType::inner: /* fallthrough */
                 case PageType::deltaSplitInner: /* fallthrough */
                 case PageType::deltaIndex:
-                    splitPage(pid, false, node, std::move(stack));
-                    break;
-                    assert(false); // not implemented
+                    return false;
                 case PageType::leaf:
                 case PageType::deltaDelete: /* fallthrough */
                 case PageType::deltaSplit: /* fallthrough */
                 case PageType::deltaInsert:
-                    splitPage(pid, true, node, std::move(stack));
-                    break;
+                    return true;
             }
+            assert(false);
+            return false;
         }
-
-        void splitPage(PID pid, bool leaf, Node<Key, Data> *node, std::stack<PID> &&stack);
 
 
         template<typename T>
