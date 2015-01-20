@@ -96,6 +96,7 @@ namespace BwTree {
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
                         if (!doNotSplit && (node1->nodeCount + deltaNodeCount - removedBySplit) > settings.getSplitLimitInner(level) && needSplitPage == NotExistantPID && this->rand(this->d) - level < 10) {
+                            if (DEBUG) std::cout << "inner count" << node1->nodeCount << " " << deltaNodeCount << " " << removedBySplit;
                             needSplitPage = nextPID;
                             needSplitPageParent = parent;
                         }
@@ -115,6 +116,7 @@ namespace BwTree {
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
                         if (!doNotSplit && node1->recordCount + deltaNodeCount - removedBySplit > settings.getSplitLimitLeaf() && needSplitPage == NotExistantPID) {
+                            if (DEBUG) std::cout << "leaf count" << node1->recordCount << " " << deltaNodeCount << " " << removedBySplit;
                             needSplitPage = nextPID;
                             needSplitPageParent = parent;
                         }
@@ -296,6 +298,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Tree<Key, Data>::splitPage(const PID needSplitPage, PID needSplitPageParent) {
         assert(needSplitPage != needSplitPageParent);
+        if (DEBUG) std::cout << "split page" << std::endl;
         Node<Key, Data> *startNode = PIDToNodePtr(needSplitPage);
         bool leaf = isLeaf(startNode);
         auto starttime = std::chrono::system_clock::now();
@@ -313,6 +316,7 @@ namespace BwTree {
             if (nodes.size() < settings.getSplitLimitInner(0)) {//TODO exact level needed?
                 return;
             }
+            if (DEBUG) std::cout << "inner size: " << nodes.size() << std::endl;
             auto middle = nodes.begin();
             std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2) - 1);
             std::nth_element(nodes.begin(), middle, nodes.end(), [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
@@ -332,6 +336,7 @@ namespace BwTree {
             records.clear();
             PID prev, next;
             std::tie(prev, next) = getConsolidatedLeafData(startNode, records);
+            if (DEBUG) std::cout << "leaf size: " << records.size() << std::endl;
             if (records.size() < settings.getSplitLimitLeaf()) {
                 return;
             }
@@ -417,6 +422,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateLeafPage(const PID pid, Node<Key, Data> *startNode) {
+        if (DEBUG) std::cout << "consolidate leaf page" << std::endl;
         auto starttime = std::chrono::system_clock::now();
 
         Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
@@ -514,6 +520,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateInnerPage(const PID pid, Node<Key, Data> *startNode) {
+        if (DEBUG) std::cout << "consolidate inner page" << std::endl;
         auto starttime = std::chrono::system_clock::now();
 
         static thread_local std::vector<std::tuple<Key, PID>> nodesStatic;

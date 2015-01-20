@@ -91,6 +91,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     class Tree {
+        static constexpr bool DEBUG = false;
         /**
         * Special Invariant:
         * - Leaf nodes always contain special infinity value at the right end for the last pointer
