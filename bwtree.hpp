@@ -163,8 +163,6 @@ namespace BwTree {
 
         std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &returnNodes);
 
-        Leaf<Key, Data> *createConsolidatedLeafPage(Node<Key, Data> *startNode);
-
         void splitPage(const PID needSplitPage, const PID needSplitPageParent);
 
         std::tuple<PID, Node<Key, Data> *> findInnerNodeOnLevel(PID pid, Key key);

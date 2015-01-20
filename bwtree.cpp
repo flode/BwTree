@@ -425,7 +425,13 @@ namespace BwTree {
         if (DEBUG) std::cout << "consolidate leaf page" << std::endl;
         auto starttime = std::chrono::system_clock::now();
 
-        Leaf<Key, Data> *newNode = createConsolidatedLeafPage(startNode);
+        static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
+        std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
+        records.clear();
+        PID prev, next;
+        std::tie(prev, next) = getConsolidatedLeafData(startNode, records);
+        Leaf<Key, Data> *newNode = Helper<Key, Data>::CreateLeafNodeFromUnsorted(records.begin(), records.end(), next, prev);
+
         Node<Key, Data> *previousNode = startNode;
 
         if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
@@ -504,18 +510,6 @@ namespace BwTree {
             node = nullptr;
         }
         return std::make_tuple(prev, next);
-    }
-
-
-    template<typename Key, typename Data>
-    Leaf<Key, Data> *Tree<Key, Data>::createConsolidatedLeafPage(Node<Key, Data> *node) {
-        static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
-        std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
-        records.clear();
-        PID prev, next;
-        std::tie(prev, next) = getConsolidatedLeafData(node, records);
-
-        return Helper<Key, Data>::CreateLeafNodeFromUnsorted(records.begin(), records.end(), next, prev);
     }
 
     template<typename Key, typename Data>
