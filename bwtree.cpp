@@ -244,7 +244,7 @@ namespace BwTree {
             case PageType::deltaDelete:
             case PageType::deltaSplit:
             case PageType::leaf: {
-                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(res.startNode, std::make_tuple(key, record));
+                DeltaInsert<Key, Data> *newNode = CreateDeltaInsert<Key, Data>(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
                     freeNodeSingle<Key, Data>(newNode);
@@ -461,7 +461,7 @@ namespace BwTree {
                     auto node1 = static_cast<Leaf<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->recordCount; ++i) {
                         auto &curKey = std::get<0>(node1->records[i]);
-                        if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.end(), curKey) == consideredKeys.end()) {
+                        if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNextIndex, curKey) == consideredKeys.begin() + consideredKeysNextIndex) {
                             records.push_back(node1->records[i]);
                         }
                     }
@@ -475,10 +475,12 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.end(), curKey) == consideredKeys.end()) {
+                    if (curKey <= stopAtKey && std::find(consideredKeys.begin(),consideredKeys.begin() + consideredKeysNextIndex, curKey) ==consideredKeys.begin() + consideredKeysNextIndex) {
                         records.push_back(node1->record);
-                        consideredKeys[consideredKeysNextIndex++] = curKey;
-                        assert(consideredKeysNextIndex != consideredKeys.size());
+                        if (node1->keyExistedBefore) {
+                            consideredKeys[consideredKeysNextIndex++] = curKey;
+                            assert(consideredKeysNextIndex != consideredKeys.size());
+                        }
                     }
                     node = node1->origin;
                     continue;
@@ -486,7 +488,7 @@ namespace BwTree {
                 case PageType::deltaDelete: {
                     auto node1 = static_cast<DeltaDelete<Key, Data> *>(node);
                     auto &curKey = node1->key;
-                    if (std::find(consideredKeys.begin(), consideredKeys.end(), curKey) == consideredKeys.end()) {
+                    if (std::find(consideredKeys.begin(),consideredKeys.begin() + consideredKeysNextIndex, curKey) ==consideredKeys.begin() + consideredKeysNextIndex) {
                         consideredKeys[consideredKeysNextIndex++] = curKey;
                         assert(consideredKeysNextIndex != consideredKeys.size());
                     }

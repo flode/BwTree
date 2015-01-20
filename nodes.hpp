@@ -66,6 +66,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     struct DeltaInsert : DeltaNode<Key, Data> {
         std::tuple<Key, const Data *> record;
+        bool keyExistedBefore;
     private:
         DeltaInsert() = delete;
 
@@ -169,12 +170,13 @@ namespace BwTree {
     };
 
     template<typename Key, typename Data>
-    DeltaInsert<Key, Data> *CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data *> record) {
+    DeltaInsert<Key, Data> *CreateDeltaInsert(Node<Key, Data> *origin, std::tuple<Key, const Data *> record, bool keyExistedBefore) {
         size_t s = sizeof(DeltaInsert<Key, Data>);
         DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) operator new(s);
         output->type = PageType::deltaInsert;
         output->origin = origin;
         output->record = record;
+        output->keyExistedBefore = keyExistedBefore;
         return output;
     }
 
