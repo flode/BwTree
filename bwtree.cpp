@@ -72,9 +72,11 @@ namespace BwTree {
             while (nextNode != nullptr) {
                 ++pageDepth;
                 assert(pageDepth < 10000);
-                if (needConsolidatePage == NotExistantPID && ((pageDepth == settings.getConsolidateLimitInner(level) && (nextNode->type == PageType::inner || nextNode->type == PageType::deltaSplitInner || nextNode->type == PageType::deltaIndex))
-                        || (pageDepth == settings.getConsolidateLimitLeaf() && (nextNode->type == PageType::leaf || nextNode->type == PageType::deltaDelete || nextNode->type == PageType::deltaSplit || nextNode->type == PageType::deltaInsert)))
-                        && this->rand(this->d) - level < 40) {//TODO save for later
+                if (needConsolidatePage == NotExistantPID && (
+                        (pageDepth == settings.getConsolidateLimitInner(level) && (nextNode->type == PageType::inner || nextNode->type == PageType::deltaSplitInner || nextNode->type == PageType::deltaIndex)
+                            && this->rand(this->d) - level < 40)
+                        || (pageDepth == settings.getConsolidateLimitLeaf() && (nextNode->type == PageType::leaf || nextNode->type == PageType::deltaDelete || nextNode->type == PageType::deltaSplit || nextNode->type == PageType::deltaInsert))
+                    )) {//TODO save for later
                     needConsolidatePage = nextPID;
                 }
                 switch (nextNode->type) {
