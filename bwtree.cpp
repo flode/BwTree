@@ -95,7 +95,7 @@ namespace BwTree {
                     };
                     case PageType::inner: {
                         auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
-                        if (!doNotSplit && (node1->nodeCount + deltaNodeCount - removedBySplit) > settings.getSplitLimitInner(level) && needSplitPage == NotExistantPID && this->rand(this->d) - level < 10) {
+                        if (!doNotSplit && (node1->nodeCount + deltaNodeCount - removedBySplit) > settings.getSplitLimitInner(level) && needSplitPage == NotExistantPID && this->rand(this->d) - level * 5 < 30) {
                             if (DEBUG) std::cout << "inner count" << node1->nodeCount << " " << deltaNodeCount << " " << removedBySplit;
                             needSplitPage = nextPID;
                             needSplitPageParent = parent;
@@ -541,7 +541,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<std::tuple<Key, PID>> &nodes) {
-        std::array<PID, 200> consideredPIDs;
+        std::array<PID, 20> consideredPIDs;
         consideredPIDs.fill(NotExistantPID);
         std::size_t consideredPIDsNextIndex = 0;
 
@@ -555,7 +555,7 @@ namespace BwTree {
                     auto node1 = static_cast<InnerNode<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->nodeCount; ++i) {
                         auto &curKey = std::get<0>(node1->nodes[i]);
-                        if (curKey <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.end(), std::get<1>(node1->nodes[i])) == consideredPIDs.end()) {
+                        if (curKey <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsNextIndex, std::get<1>(node1->nodes[i])) == consideredPIDs.begin() + consideredPIDsNextIndex) {
                             if (std::get<1>(node1->nodes[i]) == pid) {
                                 assert(false);
                             }
@@ -575,7 +575,7 @@ namespace BwTree {
                 case PageType::deltaIndex: {
                     auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
                     if (node1->keyRight <= stopAtKey) {
-                        if (std::find(consideredPIDs.begin(), consideredPIDs.end(), node1->oldChild) == consideredPIDs.end()) {
+                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsNextIndex, node1->oldChild) == consideredPIDs.begin() + consideredPIDsNextIndex) {
                             if (node1->oldChild == pid) {
                                 assert(false);
                             }
@@ -583,7 +583,7 @@ namespace BwTree {
                             consideredPIDs[consideredPIDsNextIndex++] = node1->oldChild;
                             assert(consideredPIDsNextIndex != consideredPIDs.size());
                         }
-                        if (std::find(consideredPIDs.begin(), consideredPIDs.end(), node1->child) == consideredPIDs.end()) {
+                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsNextIndex, node1->child) == consideredPIDs.begin() + consideredPIDsNextIndex) {
                             if (node1->child == pid) {
                                 assert(false);
                             }
