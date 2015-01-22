@@ -9,7 +9,7 @@ namespace BwTree {
     class Epoque {
         static constexpr std::size_t epoquescount{40000};
         std::atomic<std::size_t> epoques[epoquescount];
-        std::vector<std::array<Node<Key, Data> *, 11>> deletedNodes{epoquescount};
+        std::vector<std::array<Node<Key, Data> *, 30>> deletedNodes{epoquescount};
         std::atomic<std::size_t> deleteNodeNext[epoquescount];
         std::atomic<std::size_t> oldestEpoque{0};
         std::atomic<std::size_t> newestEpoque{0};
@@ -29,18 +29,31 @@ namespace BwTree {
         void markForDeletion(Node<Key, Data> *);
     };
 
+    static thread_local std::size_t lastEpoque = std::numeric_limits<std::size_t>::max();
+    static thread_local std::size_t lastEpoqueCount{0};
+
     template<typename Key, typename Data>
     class EnterEpoque {
         Epoque<Key, Data> &epoque;
         std::size_t myEpoque;
-
     public:
         EnterEpoque(Epoque<Key, Data> &epoque) : epoque(epoque) {
-            myEpoque = epoque.enterEpoque();
+            if (lastEpoque != std::numeric_limits<std::size_t>::max()) {
+                myEpoque = lastEpoque;
+            } else {
+                myEpoque = epoque.enterEpoque();
+                lastEpoque = myEpoque;
+            }
         }
 
         ~EnterEpoque() {
-            epoque.leaveEpoque(myEpoque);
+            if (lastEpoqueCount > 10) {
+                epoque.leaveEpoque(myEpoque);
+                lastEpoque = std::numeric_limits<std::size_t>::max();
+                lastEpoqueCount = 0;
+            } else {
+                lastEpoqueCount++;
+            }
         }
 
         Epoque<Key, Data> &getEpoque() const {
@@ -73,6 +86,7 @@ namespace BwTree {
                 for (std::size_t j = 0, end = deleteNodeNext[i]; j < end; ++j) {
                     nodes.push_back(deletedNodes[i].at(j));
                 }
+                deleteNodeNext[i].store(0);
             } else {
                 break;
             }
