@@ -8,7 +8,7 @@
 
 using namespace BwTree;
 
-void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree);
+void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree);
 
 void testBwTree() {
     std::cout << "threads, operations,percent read operations, settings, time in ms, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
@@ -16,6 +16,20 @@ void testBwTree() {
 
     std::vector<std::size_t> numberValuesChoice{{1000, 10000, 100000, 1000000, 10000000}};
     std::default_random_engine d;
+
+    std::size_t initial_values_count = 1000000;
+    std::uniform_int_distribution<unsigned long long> rand(1, initial_values_count * 2);
+    std::vector<unsigned long long> initial_values(initial_values_count);
+    std::unordered_set<unsigned long long> keys;
+    for (std::size_t i = 0; i < initial_values_count; ++i) {
+        unsigned long long val;
+        do {
+            val = rand(d);
+        } while (keys.find(val) != keys.end());
+        keys.emplace(val);
+        initial_values[i] = val;
+    }
+
     for (auto &numberValues : numberValuesChoice) {
         for (int numberOfThreads = 1; numberOfThreads <= 4; ++numberOfThreads) {
 
@@ -41,6 +55,7 @@ void testBwTree() {
                 std::vector<std::tuple<unsigned long, int>> operationsList{{std::make_tuple(values.size(),66),std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
                 for (const auto &operationsTuple : operationsList) {
                     Tree<unsigned long long, unsigned long long> tree(settings);
+                    executeBwTree(3, initial_values, initial_values, initial_values_count, 0, tree);
 
                     auto starttime = std::chrono::system_clock::now();
 
@@ -48,7 +63,7 @@ void testBwTree() {
                     const std::size_t percentRead = std::get<1>(operationsTuple);
                     std::cout << numberOfThreads << "," << operations << "," << percentRead << "," << settings.getName() << ",";
 
-                    executeBwTree(numberOfThreads, values, operations, percentRead, tree);
+                    executeBwTree(numberOfThreads, values, initial_values, operations, percentRead, tree);
 
                     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
                     std::cout << duration.count() << ", ";
@@ -79,7 +94,7 @@ void testBwTree() {
     }
 };
 
-void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree) {
+void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree) {
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned> rand(1, 100);
 
@@ -90,12 +105,18 @@ void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned
     std::size_t startOps = 0;
     std::size_t deltaOps = operations / numberOfThreads;
     for (std::size_t i = 0; i < numberOfThreads; ++i) {
-        threads.push_back(std::thread([&tree, &values, start, delta, deltaOps, &rand, &d, &percentRead]() {
+        threads.push_back(std::thread([&tree, &values, &initial_values, start, delta, deltaOps, &rand, &d, &percentRead]() {
+            std::uniform_int_distribution<std::size_t> randCoin(1, 2);
             std::size_t writeOperations = 0;
             for (std::size_t i = 0; i < deltaOps; ++i) {
-                if ((writeOperations != 0 && rand(d) < percentRead) || writeOperations == delta) {
-                    std::uniform_int_distribution<std::size_t> randRead(1, writeOperations);
-                    tree.search(values[start + randRead(d)]);
+                if ((rand(d) < percentRead) || writeOperations == delta) {
+                    if (writeOperations != 0 && randCoin(d) == 1) {
+                        std::uniform_int_distribution<std::size_t> randRead(0, writeOperations);
+                        tree.search(values[start + randRead(d)]);
+                    } else {
+                        std::uniform_int_distribution<std::size_t> randRead(0, initial_values.size());
+                        tree.search(initial_values[randRead(d)]);
+                    }
                 } else {
                     tree.insert(values[start + writeOperations], &values[start + writeOperations]);
                     writeOperations++;
