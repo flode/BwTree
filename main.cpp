@@ -55,21 +55,14 @@ void testBwTree() {
                 std::vector<std::tuple<unsigned long, int>> operationsList{{std::make_tuple(values.size(),66),std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
                 for (const auto &operationsTuple : operationsList) {
                     Tree<unsigned long long, unsigned long long> tree(settings);
-                    const auto &&commands = createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0);
-                    executeBwTreeCommands(commands, tree);
-
+                    createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0, tree, false);
 
                     const std::size_t operations = std::get<0>(operationsTuple);
                     const std::size_t percentRead = std::get<1>(operationsTuple);
-                    const auto &&measure_commands = createBwTreeCommands(numberOfThreads, values, initial_values, operations, percentRead);
-
-                    auto starttime = std::chrono::system_clock::now();
+                    auto duration = createBwTreeCommands(numberOfThreads, values, initial_values, operations, percentRead, tree, true);
 
                     std::cout << numberOfThreads << "," << operations << "," << percentRead << "," << settings.getName() << ",";
 
-                    executeBwTreeCommands(measure_commands, tree);
-
-                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
                     std::cout << duration.count() << ", ";
                     std::cout << (operations / duration.count() * 1000) << ", ";
 
@@ -99,7 +92,7 @@ void testBwTree() {
     }
 };
 
-std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &&createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead) {
+std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree, bool block) {
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned> rand(1, 100);
 
@@ -130,7 +123,14 @@ std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> 
         start += delta;
         startOps += deltaOps;
     }
-    return std::move(commands);
+
+    if (block) BLOCK();
+    auto starttime = std::chrono::system_clock::now();
+    executeBwTreeCommands(commands, tree);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
+    if (block) BLOCK();
+
+    return duration;
 }
 
 void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &commands, BwTree::Tree<unsigned long long, unsigned long long> &tree) {

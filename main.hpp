@@ -1,3 +1,5 @@
+#define BLOCK(){std::string c;std::cout << "...";std::cin >> c;}
+
 enum class BwTreeCommandType : std::int8_t {
     insert,
     search
@@ -13,7 +15,6 @@ struct BwTreeCommand {
     }
 };
 
-std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &&createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead);
-
+std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree, bool block);
 
 void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &commands, BwTree::Tree<unsigned long long, unsigned long long> &tree);
