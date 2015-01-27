@@ -11,7 +11,7 @@ using namespace BwTree;
 void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree);
 
 void testBwTree() {
-    std::cout << "threads, operations,percent read operations, settings, time in ms, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
+    std::cout << "threads, operations,percent read operations, settings, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
             "leaf split time avg, successful inner consolidation, failed inner consolidation, inner consolidation time avg, successful inner split, failed innersplit, inner split time avg" << std::endl;
 
     std::vector<std::size_t> numberValuesChoice{{1000, 10000, 100000, 1000000, 10000000}};
@@ -67,6 +67,7 @@ void testBwTree() {
 
                     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
                     std::cout << duration.count() << ", ";
+                    std::cout << (operations / duration.count() * 1000) << ", ";
 
 
                     std::cout << tree.getAtomicCollisions() << ",";
