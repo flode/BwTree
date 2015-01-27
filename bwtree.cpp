@@ -364,7 +364,7 @@ namespace BwTree {
 
         splitNode = DeltaSplit<Key, Data>::create(startNode, Kp, newRightNodePID, removedElements, leaf);
 
-        if (!mapping[needSplitPage].compare_exchange_weak(startNode, splitNode)) {
+        if (!mapping[needSplitPage].compare_exchange_strong(startNode, splitNode)) {
             ++atomicCollisions;
             if (!leaf) ++failedInnerSplit; else ++failedLeafSplit;
             freeNodeSingle<Key, Data>(splitNode);
@@ -404,7 +404,7 @@ namespace BwTree {
             Node<Key, Data> *parentNode = PIDToNodePtr(needSplitPageParent);
             assert(parentNode->type == PageType::inner || parentNode->type == PageType::deltaIndex || parentNode->type == PageType::deltaSplitInner);
             DeltaIndex<Key, Data> *indexNode = DeltaIndex<Key, Data>::create(parentNode, Kp, Kq, newRightNodePID, needSplitPage);
-            if (!mapping[needSplitPageParent].compare_exchange_weak(parentNode, indexNode)) {
+            if (!mapping[needSplitPageParent].compare_exchange_strong(parentNode, indexNode)) {
                 freeNodeSingle<Key, Data>(indexNode);
                 ++atomicCollisions;
                 // check if parent has been split
@@ -433,7 +433,7 @@ namespace BwTree {
 
         Node<Key, Data> *previousNode = startNode;
 
-        if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+        if (!mapping[pid].compare_exchange_strong(startNode, newNode)) {
             freeNodeSingle<Key, Data>(newNode);
             ++atomicCollisions;
             ++failedLeafConsolidate;
@@ -568,7 +568,7 @@ namespace BwTree {
 
         Node<Key, Data> *const previousNode = startNode;
 
-        if (!mapping[pid].compare_exchange_weak(startNode, newNode)) {
+        if (!mapping[pid].compare_exchange_strong(startNode, newNode)) {
             freeNodeSingle<Key, Data>(newNode);
             ++atomicCollisions;
             ++failedInnerConsolidate;
