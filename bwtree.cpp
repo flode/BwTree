@@ -543,7 +543,7 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<std::tuple<Key, PID>> &nodes) {
-        std::array<PID, 20> consideredPIDs;
+        std::array<PID, 40> consideredPIDs;
         consideredPIDs.fill(NotExistantPID);
         std::size_t consideredPIDsNextIndex = 0;
 
