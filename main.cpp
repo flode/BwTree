@@ -9,13 +9,10 @@
 
 using namespace BwTree;
 
-
 template<typename Key>
 void testBwTree() {
     std::cout << "threads, operations,percent read operations, settings, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
             "leaf split time avg, successful inner consolidation, failed inner consolidation, inner consolidation time avg, successful inner split, failed innersplit, inner split time avg" << std::endl;
-
-    std::vector<std::size_t> numberValuesChoice{{1000, 10000, 100000, 1000000, 10000000}};
     std::default_random_engine d;
 
     std::size_t initial_values_count = 1000000;
@@ -31,6 +28,7 @@ void testBwTree() {
         initial_values[i] = val;
     }
 
+    std::vector<std::size_t> numberValuesChoice{{1000000,10000000, 20000000, 30000000}};//1000, 10000, 100000,1000000,10000000}};
     for (auto &numberValues : numberValuesChoice) {
         for (int numberOfThreads = 1; numberOfThreads <= 4; ++numberOfThreads) {
 
