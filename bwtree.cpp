@@ -448,9 +448,12 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     std::tuple<PID, PID> Tree<Key, Data>::getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &records) {
-        std::array<Key, 20> consideredKeys;
-        consideredKeys.fill(std::numeric_limits<Key>::max());//TODO do not allow this key for insert
-        std::size_t consideredKeysNextIndex = 0;
+        std::array<std::tuple<Key, const Data *>, 100> deltaInsertRecords;
+        std::array<Key, 100> consideredKeys;
+        deltaInsertRecords.fill(std::make_tuple(std::numeric_limits<Key>::max(), nullptr));
+        consideredKeys.fill(std::numeric_limits<Key>::max());
+        std::size_t deltaInsertRecordsNext = 0;
+        std::size_t consideredKeysNext = 0;
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
@@ -458,10 +461,47 @@ namespace BwTree {
             switch (node->type) {
                 case PageType::leaf: {
                     auto node1 = static_cast<Leaf<Key, Data> *>(node);
-                    for (std::size_t i = 0; i < node1->recordCount; ++i) {
-                        auto &curKey = std::get<0>(node1->records[i]);
-                        if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNextIndex, curKey) == consideredKeys.begin() + consideredKeysNextIndex) {
-                            records.push_back(node1->records[i]);
+                    std::sort(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
+                        return std::get<0>(t1) < std::get<0>(t2);
+                    });
+                    std::size_t nextrecord = 0;
+                    std::size_t nextdelta = 0;
+                    while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsNext) {
+                        if (std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, std::get<0>(node1->records[nextrecord])) != consideredKeys.begin() + consideredKeysNext) {
+                            // when a record has been updated or deleted
+                            ++nextrecord;
+                            continue;
+                        }
+                        std::tuple<Key, const Data *> record;
+                        if (std::get<0>(node1->records[nextrecord]) < std::get<0>(deltaInsertRecords[nextdelta])) {
+                            record = node1->records[nextrecord];
+                            ++nextrecord;
+                        } else {
+                            record = deltaInsertRecords[nextdelta];
+                            ++nextdelta;
+                        }
+                        if (std::get<0>(record) <= stopAtKey) {
+                            records.push_back(record);
+                        } else {
+                            nextrecord = node1->recordCount;
+                            nextdelta = deltaInsertRecordsNext;
+                            break;
+                        }
+                    }
+                    while (nextrecord < node1->recordCount) {
+                        if (std::get<0>(node1->records[nextrecord]) <= stopAtKey) {
+                            records.push_back(node1->records[nextrecord]);
+                            ++nextrecord;
+                        } else {
+                            break;
+                        }
+                    }
+                    while (nextdelta < deltaInsertRecordsNext) {
+                        if (std::get<0>(deltaInsertRecords[nextdelta]) <= stopAtKey) {
+                            records.push_back(deltaInsertRecords[nextdelta]);
+                            ++nextdelta;
+                        } else {
+                            break;
                         }
                     }
                     prev = node1->prev;
@@ -474,12 +514,12 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey <= stopAtKey && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNextIndex, curKey) == consideredKeys.begin() + consideredKeysNextIndex) {
-                        records.push_back(node1->record);
-                        if (node1->keyExistedBefore) {
-                            consideredKeys[consideredKeysNextIndex++] = curKey;
-                            assert(consideredKeysNextIndex != consideredKeys.size());
-                        }
+                    if (curKey <= stopAtKey// && std::find(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, curKey) == deltaInsertRecords.begin() + deltaInsertRecordsNext
+                            && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, curKey) == consideredKeys.begin() + consideredKeysNext) {
+                        deltaInsertRecords[deltaInsertRecordsNext++] = node1->record;
+                        assert(deltaInsertRecordsNext != deltaInsertRecords.size());
+                        consideredKeys[consideredKeysNext++] = curKey;
+                        assert(consideredKeysNext != consideredKeys.size());
                     }
                     node = node1->origin;
                     continue;
@@ -487,9 +527,9 @@ namespace BwTree {
                 case PageType::deltaDelete: {
                     auto node1 = static_cast<DeltaDelete<Key, Data> *>(node);
                     auto &curKey = node1->key;
-                    if (std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNextIndex, curKey) == consideredKeys.begin() + consideredKeysNextIndex) {
-                        consideredKeys[consideredKeysNextIndex++] = curKey;
-                        assert(consideredKeysNextIndex != consideredKeys.size());
+                    if (std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, curKey) == consideredKeys.begin() + consideredKeysNext) {
+                        consideredKeys[consideredKeysNext++] = curKey;
+                        assert(consideredKeysNext != consideredKeys.size());
                     }
                     node = node1->origin;
                     continue;
