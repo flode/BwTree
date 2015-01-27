@@ -1,6 +1,8 @@
 #ifndef BWTREE_H
 #define BWTREE_H
 
+#undef NDEBUG
+
 #include <tuple>
 #include <vector>
 #include <mutex>
@@ -18,10 +20,10 @@ namespace BwTree {
     template<typename Key, typename Data>
     struct FindDataPageResult {
         const PID pid;
-        Node<Key, Data> * startNode;
-        const Node<Key, Data> * const dataNode;
+        Node<Key, Data> *startNode;
+        const Node<Key, Data> *const dataNode;
         const Key key = NotExistantPID;
-        const Data * const data = nullptr;
+        const Data *const data = nullptr;
         const PID needConsolidatePage;
         const PID needSplitPage;
         const PID needSplitPageParent;
