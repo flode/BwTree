@@ -10,6 +10,7 @@
 using namespace BwTree;
 
 
+template<typename Key>
 void testBwTree() {
     std::cout << "threads, operations,percent read operations, settings, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
             "leaf split time avg, successful inner consolidation, failed inner consolidation, inner consolidation time avg, successful inner split, failed innersplit, inner split time avg" << std::endl;
@@ -18,11 +19,11 @@ void testBwTree() {
     std::default_random_engine d;
 
     std::size_t initial_values_count = 1000000;
-    std::uniform_int_distribution<unsigned long long> rand(1, initial_values_count * 2);
-    std::vector<unsigned long long> initial_values(initial_values_count);
-    std::unordered_set<unsigned long long> keys;
+    std::uniform_int_distribution<Key> rand(1, initial_values_count * 2);
+    std::vector<Key> initial_values(initial_values_count);
+    std::unordered_set<Key> keys;
     for (std::size_t i = 0; i < initial_values_count; ++i) {
-        unsigned long long val;
+        Key val;
         do {
             val = rand(d);
         } while (keys.find(val) != keys.end());
@@ -33,9 +34,9 @@ void testBwTree() {
     for (auto &numberValues : numberValuesChoice) {
         for (int numberOfThreads = 1; numberOfThreads <= 4; ++numberOfThreads) {
 
-            std::uniform_int_distribution<unsigned long long> rand(1, numberValues * 2);
-            std::vector<unsigned long long> values(numberValues);
-            std::unordered_set<unsigned long long> keys;
+            std::uniform_int_distribution<Key> rand(1, numberValues * 2);
+            std::vector<Key> values(numberValues);
+            std::unordered_set<Key> keys;
             for (std::size_t i = 0; i < numberValues; ++i) {
                 unsigned long long val;
                 do {
@@ -52,9 +53,9 @@ void testBwTree() {
                     BwTree::Settings("multiple split and consolidate", 200, {{50, 100, 200}}, 5, {{2, 3, 4}})
             }};
             for (auto &settings : settingsList) {
-                std::vector<std::tuple<unsigned long, int>> operationsList{{std::make_tuple(values.size(),66),std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
+                std::vector<std::tuple<std::size_t, int>> operationsList{{std::make_tuple(values.size(), 83)}};//,std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
                 for (const auto &operationsTuple : operationsList) {
-                    Tree<unsigned long long, unsigned long long> tree(settings);
+                    Tree<Key,Key> tree(settings);
                     createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0, tree, false);
 
                     const std::size_t operations = std::get<0>(operationsTuple);
@@ -92,7 +93,8 @@ void testBwTree() {
     }
 };
 
-std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree, bool block) {
+template<typename Key>
+std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<Key> &values, const std::vector<Key> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<Key,Key> &tree, bool block) {
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned> rand(1, 100);
 
@@ -101,22 +103,22 @@ std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads
     std::size_t delta = values.size() / numberOfThreads;
     std::size_t startOps = 0;
     std::size_t deltaOps = operations / numberOfThreads;
-    std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> commands(numberOfThreads);
+    std::vector<std::vector<BwTreeCommand<Key,Key>>> commands(numberOfThreads);
     for (std::size_t i = 0; i < numberOfThreads; ++i) {
         std::uniform_int_distribution<std::size_t> randCoin(1, 2);
         std::size_t writeOperations = 0;
-        std::vector<BwTreeCommand<unsigned long long, unsigned long long>> &cmds = commands[i];
+        std::vector<BwTreeCommand<Key,Key>> &cmds = commands[i];
         for (std::size_t i = 0; i < deltaOps; ++i) {
             if ((rand(d) < percentRead) || writeOperations == delta) {
                 if (writeOperations != 0 && randCoin(d) == 1) {
                     std::uniform_int_distribution<std::size_t> randRead(0, writeOperations);
-                    cmds.push_back(BwTreeCommand<unsigned long long, unsigned long long>(BwTreeCommandType::search, values[start + randRead(d)], nullptr));
+                    cmds.push_back(BwTreeCommand<Key,Key>(BwTreeCommandType::search, values[start + randRead(d)], nullptr));
                 } else {
                     std::uniform_int_distribution<std::size_t> randRead(0, initial_values.size());
-                    cmds.push_back(BwTreeCommand<unsigned long long, unsigned long long>(BwTreeCommandType::search, initial_values[randRead(d)], nullptr));
+                    cmds.push_back(BwTreeCommand<Key,Key>(BwTreeCommandType::search, initial_values[randRead(d)], nullptr));
                 }
             } else {
-                cmds.push_back(BwTreeCommand<unsigned long long, unsigned long long>(BwTreeCommandType::insert, values[start + writeOperations], &values[start + writeOperations]));
+                cmds.push_back(BwTreeCommand<Key,Key>(BwTreeCommandType::insert, values[start + writeOperations], &values[start + writeOperations]));
                 writeOperations++;
             }
         }
@@ -133,7 +135,8 @@ std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads
     return duration;
 }
 
-void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &commands, BwTree::Tree<unsigned long long, unsigned long long> &tree) {
+template<typename Key>
+void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<Key,Key>>> &commands, BwTree::Tree<Key,Key> &tree) {
     std::vector<std::thread> threads;
     for (auto &cmds : commands) {
         threads.push_back(std::thread([&tree, &cmds]() {
