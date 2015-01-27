@@ -59,7 +59,7 @@ void testBwTree() {
 
                     const std::size_t operations = std::get<0>(operationsTuple);
                     const std::size_t percentRead = std::get<1>(operationsTuple);
-                    auto duration = createBwTreeCommands(numberOfThreads, values, initial_values, operations, percentRead, tree, true);
+                    auto duration = createBwTreeCommands(numberOfThreads, values, initial_values, operations, percentRead, tree, false);
 
                     std::cout << numberOfThreads << "," << operations << "," << percentRead << "," << settings.getName() << ",";
 
