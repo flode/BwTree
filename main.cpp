@@ -5,10 +5,10 @@
 #include <unordered_set>
 #include <thread>
 #include "bwtree.hpp"
+#include "main.hpp"
 
 using namespace BwTree;
 
-void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree);
 
 void testBwTree() {
     std::cout << "threads, operations,percent read operations, settings, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
@@ -55,15 +55,19 @@ void testBwTree() {
                 std::vector<std::tuple<unsigned long, int>> operationsList{{std::make_tuple(values.size(),66),std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
                 for (const auto &operationsTuple : operationsList) {
                     Tree<unsigned long long, unsigned long long> tree(settings);
-                    executeBwTree(3, initial_values, initial_values, initial_values_count, 0, tree);
+                    const auto &&commands = createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0);
+                    executeBwTreeCommands(commands, tree);
 
-                    auto starttime = std::chrono::system_clock::now();
 
                     const std::size_t operations = std::get<0>(operationsTuple);
                     const std::size_t percentRead = std::get<1>(operationsTuple);
+                    const auto &&measure_commands = createBwTreeCommands(numberOfThreads, values, initial_values, operations, percentRead);
+
+                    auto starttime = std::chrono::system_clock::now();
+
                     std::cout << numberOfThreads << "," << operations << "," << percentRead << "," << settings.getName() << ",";
 
-                    executeBwTree(numberOfThreads, values, initial_values, operations, percentRead, tree);
+                    executeBwTreeCommands(measure_commands, tree);
 
                     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
                     std::cout << duration.count() << ", ";
@@ -95,38 +99,56 @@ void testBwTree() {
     }
 };
 
-void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<unsigned long long, unsigned long long> &tree) {
+std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &&createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<unsigned long long> &values, const std::vector<unsigned long long> &initial_values, const std::size_t operations, const unsigned percentRead) {
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned> rand(1, 100);
 
-    std::vector<std::thread> threads;
     std::atomic<int> c{0};
     std::size_t start = 0;
     std::size_t delta = values.size() / numberOfThreads;
     std::size_t startOps = 0;
     std::size_t deltaOps = operations / numberOfThreads;
+    std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> commands(numberOfThreads);
     for (std::size_t i = 0; i < numberOfThreads; ++i) {
-        threads.push_back(std::thread([&tree, &values, &initial_values, start, delta, deltaOps, &rand, &d, &percentRead]() {
-            std::uniform_int_distribution<std::size_t> randCoin(1, 2);
-            std::size_t writeOperations = 0;
-            for (std::size_t i = 0; i < deltaOps; ++i) {
-                if ((rand(d) < percentRead) || writeOperations == delta) {
-                    if (writeOperations != 0 && randCoin(d) == 1) {
-                        std::uniform_int_distribution<std::size_t> randRead(0, writeOperations);
-                        tree.search(values[start + randRead(d)]);
-                    } else {
-                        std::uniform_int_distribution<std::size_t> randRead(0, initial_values.size());
-                        tree.search(initial_values[randRead(d)]);
-                    }
+        std::uniform_int_distribution<std::size_t> randCoin(1, 2);
+        std::size_t writeOperations = 0;
+        std::vector<BwTreeCommand<unsigned long long, unsigned long long>> &cmds = commands[i];
+        for (std::size_t i = 0; i < deltaOps; ++i) {
+            if ((rand(d) < percentRead) || writeOperations == delta) {
+                if (writeOperations != 0 && randCoin(d) == 1) {
+                    std::uniform_int_distribution<std::size_t> randRead(0, writeOperations);
+                    cmds.push_back(BwTreeCommand<unsigned long long, unsigned long long>(BwTreeCommandType::search, values[start + randRead(d)], nullptr));
                 } else {
-                    tree.insert(values[start + writeOperations], &values[start + writeOperations]);
-                    writeOperations++;
+                    std::uniform_int_distribution<std::size_t> randRead(0, initial_values.size());
+                    cmds.push_back(BwTreeCommand<unsigned long long, unsigned long long>(BwTreeCommandType::search, initial_values[randRead(d)], nullptr));
+                }
+            } else {
+                cmds.push_back(BwTreeCommand<unsigned long long, unsigned long long>(BwTreeCommandType::insert, values[start + writeOperations], &values[start + writeOperations]));
+                writeOperations++;
+            }
+        }
+        start += delta;
+        startOps += deltaOps;
+    }
+    return std::move(commands);
+}
+
+void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<unsigned long long, unsigned long long>>> &commands, BwTree::Tree<unsigned long long, unsigned long long> &tree) {
+    std::vector<std::thread> threads;
+    for (auto &cmds : commands) {
+        threads.push_back(std::thread([&tree, &cmds]() {
+            for (auto &command : cmds) {
+                switch (command.type) {
+                    case BwTreeCommandType::insert:
+                        tree.insert(command.key, command.data);
+                        break;
+                    case BwTreeCommandType::search:
+                        tree.search(command.key);
+                        break;
                 }
             }
             tree.threadFinishedWithTree();
         }));
-        start += delta;
-        startOps += deltaOps;
     }
 
     for (auto &thread : threads) {
