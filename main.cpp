@@ -101,6 +101,7 @@ void executeBwTree(const std::size_t numberOfThreads, const std::vector<unsigned
                     writeOperations++;
                 }
             }
+            tree.threadFinishedWithTree();
         }));
         start += delta;
         startOps += deltaOps;

@@ -207,6 +207,13 @@ namespace BwTree {
 
         Data *search(Key key);
 
+        /**
+        * has to be called when no further work is to be done the next time so that the epoques can be freed.
+        */
+        void threadFinishedWithTree() {
+            EnterEpoque<Key, Data>::threadFinishedWithTree(epoque);
+        }
+
 
         unsigned long getAtomicCollisions() const {
             return atomicCollisions;

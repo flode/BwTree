@@ -59,6 +59,13 @@ namespace BwTree {
         Epoque<Key, Data> &getEpoque() const {
             return epoque;
         }
+
+        static void threadFinishedWithTree(Epoque<Key, Data> &epoque) {
+            if (lastEpoque != std::numeric_limits<std::size_t>::max()) {
+                epoque.leaveEpoque(lastEpoque);
+                lastEpoque = std::numeric_limits<std::size_t>::max();
+            }
+        }
     };
 
 
