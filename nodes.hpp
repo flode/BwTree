@@ -211,9 +211,6 @@ namespace BwTree {
         static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &prev, const PID &next) {
             // construct a new node
             auto newNode = Leaf<Key, Data>::create(std::distance(begin, end), prev, next);
-            std::sort(begin, end, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
-                return std::get<0>(t1) < std::get<0>(t2);
-            });
             int i = 0;
             for (auto it = begin; it != end; ++it) {
                 newNode->records[i++] = *it;
