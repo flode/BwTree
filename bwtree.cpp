@@ -276,70 +276,44 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Tree<Key, Data>::insert(Key key, const Data *const record) {
         EnterEpoque<Key, Data> epoqueGuard(epoque);
+        restartInsert:
         FindDataPageResult<Key, Data> res = findDataPage(key);
-        switch (res.startNode->type) {
-            case PageType::deltaIndex:
-            case PageType::inner:
-            case PageType::deltaSplitInner:
-                assert(false); // only leafs  should come to here
-            case PageType::deltaInsert:
-            case PageType::deltaDelete:
-            case PageType::deltaSplit:
-            case PageType::leaf: {
-                if (res.needConsolidatePage == res.pid) {
-                    consolidateLeafPage(res.pid, res.startNode);
-                    insert(key, record);
-                    return;
-                }
-                DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
-                if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
-                    ++atomicCollisions;
-                    freeNodeSingle<Key, Data>(newNode);
-                    insert(key, record);
-                    return;
-                } else {
-                    if (res.needSplitPage != NotExistantPID) {
-                        splitPage(res.needSplitPage, res.needSplitPageParent);
-                    } else if (res.needConsolidatePage != NotExistantPID) {
-                        consolidatePage(res.needConsolidatePage);
-                    }
-                    return;
-                }
-            }
-            default:
-                assert(false); //shouldn't happen
+        assert(isLeaf(res.startNode));
+        if (res.needConsolidatePage == res.pid) {
+            consolidateLeafPage(res.pid, res.startNode);
+            goto restartInsert;
         }
-        assert(false);
+        DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
+        if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
+            ++atomicCollisions;
+            freeNodeSingle<Key, Data>(newNode);
+            goto restartInsert;
+        } else {
+            if (res.needSplitPage != NotExistantPID) {
+                splitPage(res.needSplitPage, res.needSplitPageParent);
+            } else if (res.needConsolidatePage != NotExistantPID) {
+                consolidatePage(res.needConsolidatePage);
+            }
+            return;
+        }
     }
 
 
     template<typename Key, typename Data>
     void Tree<Key, Data>::deleteKey(Key key) {
         EnterEpoque<Key, Data> epoqueGuard(epoque);
+        restartDelete:
         FindDataPageResult<Key, Data> res = findDataPage(key);
         if (res.dataNode == nullptr) {
             return;
         }
-        switch (res.startNode->type) {
-            case PageType::deltaDelete:
-            case PageType::deltaInsert:
-            case PageType::leaf: {
-                DeltaDelete<Key, Data> *newDeleteNode = DeltaDelete<Key, Data>::create(res.startNode, key);
-                if (!mapping[res.pid].compare_exchange_weak(res.startNode, newDeleteNode)) {
-                    ++atomicCollisions;
-                    freeNodeSingle<Key, Data>(newDeleteNode);
-                    deleteKey(key);//TODO without recursion
-                    return;
-                }
-                return;
-            }
-            case PageType::inner:
-            case PageType::deltaIndex:
-            case PageType::deltaSplit:
-            case PageType::deltaSplitInner:
-                assert(false);//only for leafs
+        assert(isLeaf(res.startNode));
+        DeltaDelete<Key, Data> *newDeleteNode = DeltaDelete<Key, Data>::create(res.startNode, key);
+        if (!mapping[res.pid].compare_exchange_weak(res.startNode, newDeleteNode)) {
+            ++atomicCollisions;
+            freeNodeSingle<Key, Data>(newDeleteNode);
+            goto restartDelete;
         }
-        assert(false);
     }
 
     template<typename Key, typename Data>
