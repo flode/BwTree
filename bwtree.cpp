@@ -460,26 +460,29 @@ namespace BwTree {
         while (node != nullptr) {
             switch (node->type) {
                 case PageType::leaf: {
-                    auto node1 = static_cast<Leaf<Key, Data> *>(node);
+                    const auto node1 = static_cast<Leaf<Key, Data> *>(node);
                     std::sort(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
                         return std::get<0>(t1) < std::get<0>(t2);
                     });
-                    std::size_t nextrecord = 0;
-                    std::size_t nextdelta = 0;
+                    std::sort(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext);
+                    std::tuple<Key, const Data *>* recordsdata[] = {const_cast<std::tuple<Key, const Data *>*>(deltaInsertRecords.data()), node1->records};
+                    std::size_t nextconsidered = 0;
+                    std::size_t nextrecords[] = {0,0};
+                    std::size_t &nextrecord = nextrecords[1];
+                    std::size_t &nextdelta = nextrecords[0];
                     while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsNext) {
-                        if (std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, std::get<0>(node1->records[nextrecord])) != consideredKeys.begin() + consideredKeysNext) {
-                            // when a record has been updated or deleted
-                            ++nextrecord;
+                        nextconsidered += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]);
+                        if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]) {
                             continue;
                         }
-                        std::tuple<Key, const Data *> record;
-                        if (std::get<0>(node1->records[nextrecord]) < std::get<0>(deltaInsertRecords[nextdelta])) {
-                            record = node1->records[nextrecord];
-                            ++nextrecord;
-                        } else {
-                            record = deltaInsertRecords[nextdelta];
-                            ++nextdelta;
+                        nextrecord += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]);
+                        if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]) {
+                            continue;
                         }
+
+                        std::int8_t choice = (std::get<0>(node1->records[nextrecord]) < std::get<0>(deltaInsertRecords[nextdelta]));
+                        std::tuple<Key, const Data *> record = recordsdata[choice][nextrecords[choice]];
+                        ++nextrecords[choice];
                         if (std::get<0>(record) <= stopAtKey) {
                             records.push_back(record);
                         } else {
@@ -518,8 +521,10 @@ namespace BwTree {
                             && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, curKey) == consideredKeys.begin() + consideredKeysNext) {
                         deltaInsertRecords[deltaInsertRecordsNext++] = node1->record;
                         assert(deltaInsertRecordsNext != deltaInsertRecords.size());
-                        consideredKeys[consideredKeysNext++] = curKey;
-                        assert(consideredKeysNext != consideredKeys.size());
+                        if (node1->keyExistedBefore) {
+                            consideredKeys[consideredKeysNext++] = curKey;
+                            assert(consideredKeysNext != consideredKeys.size());
+                        }
                     }
                     node = node1->origin;
                     continue;
