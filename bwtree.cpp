@@ -490,8 +490,6 @@ namespace BwTree {
     std::tuple<PID, PID> Tree<Key, Data>::getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &records) {
         std::array<std::tuple<Key, const Data *>, 100> deltaInsertRecords;
         std::array<Key, 100> consideredKeys;
-        deltaInsertRecords.fill(std::make_tuple(std::numeric_limits<Key>::max(), nullptr));
-        consideredKeys.fill(std::numeric_limits<Key>::max());
         std::size_t deltaInsertRecordsNext = 0;
         std::size_t consideredKeysNext = 0;
         Key stopAtKey = std::numeric_limits<Key>::max();
@@ -502,7 +500,7 @@ namespace BwTree {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
-                    if (curKey <= stopAtKey// && std::find(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, curKey) == deltaInsertRecords.begin() + deltaInsertRecordsNext
+                    if (curKey <= stopAtKey
                             && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, curKey) == consideredKeys.begin() + consideredKeysNext) {
                         deltaInsertRecords[deltaInsertRecordsNext++] = node1->record;
                         assert(deltaInsertRecordsNext != deltaInsertRecords.size());
