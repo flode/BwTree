@@ -65,18 +65,18 @@ namespace BwTree {
                 //std::cout << debugTMPCheck << std::endl;
             }
             std::size_t pageDepth = 0;
-            Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
-            Node<Key, Data> *nextNode = startNode;
+            Node<Key, Data> *nextNode = PIDToNodePtr(nextPID);
+            if (isLeaf(nextNode)) {
+                break;
+            }
             long deltaNodeCount = 0;
             long removedBySplit = 0;
             while (nextNode != nullptr) {
                 ++pageDepth;
                 assert(pageDepth < 10000);
                 if (needConsolidatePage == NotExistantPID && (
-                        (pageDepth == settings.getConsolidateLimitInner(level) && (nextNode->type == PageType::inner || nextNode->type == PageType::deltaSplitInner || nextNode->type == PageType::deltaIndex)
-                            && this->rand(this->d) - level < 40)
-                        || (pageDepth == settings.getConsolidateLimitLeaf() && (nextNode->type == PageType::leaf || nextNode->type == PageType::deltaDelete || nextNode->type == PageType::deltaSplit || nextNode->type == PageType::deltaInsert))
-                    )) {//TODO save for later
+                        (pageDepth == settings.getConsolidateLimitInner(level) && this->rand(this->d) - level < 40)
+                )) {//TODO save for later
                     needConsolidatePage = nextPID;
                 }
                 switch (nextNode->type) {
@@ -88,7 +88,7 @@ namespace BwTree {
                             doNotSplit = false;
                             nextPID = node1->child;
                             nextNode = nullptr;
-                            break;
+                            continue;
                         } else {
                             deltaNodeCount++;
                             nextNode = node1->origin;
@@ -115,6 +115,46 @@ namespace BwTree {
                         nextNode = nullptr;
                         continue;
                     };
+                    case PageType::deltaSplitInner: {
+                        auto node1 = static_cast<DeltaSplit<Key, Data> *>(nextNode);
+                        if (key > node1->key) {
+                            nextPID = node1->sidelink;
+                            nextNode = nullptr;
+                            doNotSplit = true;
+                            continue;
+                        }
+                        removedBySplit += node1->removedElements;
+                        nextNode = node1->origin;
+                        assert(nextNode != nullptr);
+                        continue;
+                    };
+                    default: {
+                        assert(false); // not implemented
+                    }
+                }
+                nextNode = nullptr;
+            }
+        }
+
+        // Handle leaf
+        while (nextPID != NotExistantPID) {
+            if (debugTMPCheck++ > 50000) {
+                assert(false);
+                //std::cout << debugTMPCheck << std::endl;
+            }
+            std::size_t pageDepth = 0;
+            Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
+            Node<Key, Data> *nextNode = startNode;
+            long deltaNodeCount = 0;
+            long removedBySplit = 0;
+            while (nextNode != nullptr) {
+                ++pageDepth;
+                assert(pageDepth < 10000);
+                if (needConsolidatePage == NotExistantPID && pageDepth == settings.getConsolidateLimitLeaf()) {
+                    //TODO save for later
+                    needConsolidatePage = nextPID;
+                }
+                switch (nextNode->type) {
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
                         if (!doNotSplit && node1->recordCount + deltaNodeCount - removedBySplit > settings.getSplitLimitLeaf() && needSplitPage == NotExistantPID) {
@@ -155,7 +195,6 @@ namespace BwTree {
                         assert(nextNode != nullptr);
                         continue;
                     };
-                    case PageType::deltaSplitInner:
                     case PageType::deltaSplit: {
                         auto node1 = static_cast<DeltaSplit<Key, Data> *>(nextNode);
                         if (key > node1->key) {
@@ -176,6 +215,7 @@ namespace BwTree {
                 nextNode = nullptr;
             }
         }
+
         assert(false); // I think this should not happen
         return FindDataPageResult<Key, Data>(NotExistantPID, nullptr, nullptr, needConsolidatePage, needSplitPage, needSplitPageParent);
     }
