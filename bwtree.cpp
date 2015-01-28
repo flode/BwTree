@@ -457,63 +457,8 @@ namespace BwTree {
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
-        while (node != nullptr) {
+        while (node->type != PageType::leaf) {
             switch (node->type) {
-                case PageType::leaf: {
-                    const auto node1 = static_cast<Leaf<Key, Data> *>(node);
-                    std::sort(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
-                        return std::get<0>(t1) < std::get<0>(t2);
-                    });
-                    std::sort(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext);
-                    std::tuple<Key, const Data *>* recordsdata[] = {const_cast<std::tuple<Key, const Data *>*>(deltaInsertRecords.data()), node1->records};
-                    std::size_t nextconsidered = 0;
-                    std::size_t nextrecords[] = {0,0};
-                    std::size_t &nextrecord = nextrecords[1];
-                    std::size_t &nextdelta = nextrecords[0];
-                    while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsNext) {
-                        nextconsidered += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]);
-                        if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]) {
-                            continue;
-                        }
-                        nextrecord += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]);
-                        if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]) {
-                            continue;
-                        }
-
-                        std::int8_t choice = (std::get<0>(node1->records[nextrecord]) < std::get<0>(deltaInsertRecords[nextdelta]));
-                        std::tuple<Key, const Data *> record = recordsdata[choice][nextrecords[choice]];
-                        ++nextrecords[choice];
-                        if (std::get<0>(record) <= stopAtKey) {
-                            records.push_back(record);
-                        } else {
-                            nextrecord = node1->recordCount;
-                            nextdelta = deltaInsertRecordsNext;
-                            break;
-                        }
-                    }
-                    while (nextrecord < node1->recordCount) {
-                        if (std::get<0>(node1->records[nextrecord]) <= stopAtKey) {
-                            records.push_back(node1->records[nextrecord]);
-                            ++nextrecord;
-                        } else {
-                            break;
-                        }
-                    }
-                    while (nextdelta < deltaInsertRecordsNext) {
-                        if (std::get<0>(deltaInsertRecords[nextdelta]) <= stopAtKey) {
-                            records.push_back(deltaInsertRecords[nextdelta]);
-                            ++nextdelta;
-                        } else {
-                            break;
-                        }
-                    }
-                    prev = node1->prev;
-                    if (!pageSplit) {
-                        next = node1->next;
-                    }
-                    // found last element in the chain
-                    break;
-                }
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
@@ -553,7 +498,58 @@ namespace BwTree {
                     assert(false); //shouldn't occur here
                 }
             }
-            node = nullptr;
+        }
+        //case PageType::leaf:
+        const auto node1 = static_cast<Leaf<Key, Data> *>(node);
+        std::sort(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
+            return std::get<0>(t1) < std::get<0>(t2);
+        });
+        std::sort(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext);
+        std::tuple<Key, const Data *> *recordsdata[] = {const_cast<std::tuple<Key, const Data *> *>(deltaInsertRecords.data()), node1->records};
+        std::size_t nextconsidered = 0;
+        std::size_t nextrecords[] = {0, 0};
+        std::size_t &nextrecord = nextrecords[1];
+        std::size_t &nextdelta = nextrecords[0];
+        while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsNext) {
+            nextconsidered += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]);
+            if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]) {
+                continue;
+            }
+            nextrecord += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]);
+            if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]) {
+                continue;
+            }
+
+            std::int8_t choice = (std::get<0>(node1->records[nextrecord]) < std::get<0>(deltaInsertRecords[nextdelta]));
+            std::tuple<Key, const Data *> record = recordsdata[choice][nextrecords[choice]];
+            ++nextrecords[choice];
+            if (std::get<0>(record) <= stopAtKey) {
+                records.push_back(record);
+            } else {
+                nextrecord = node1->recordCount;
+                nextdelta = deltaInsertRecordsNext;
+                break;
+            }
+        }
+        while (nextrecord < node1->recordCount) {
+            if (std::get<0>(node1->records[nextrecord]) <= stopAtKey) {
+                records.push_back(node1->records[nextrecord]);
+                ++nextrecord;
+            } else {
+                break;
+            }
+        }
+        while (nextdelta < deltaInsertRecordsNext) {
+            if (std::get<0>(deltaInsertRecords[nextdelta]) <= stopAtKey) {
+                records.push_back(deltaInsertRecords[nextdelta]);
+                ++nextdelta;
+            } else {
+                break;
+            }
+        }
+        prev = node1->prev;
+        if (!pageSplit) {
+            next = node1->next;
         }
         return std::make_tuple(prev, next);
     }
