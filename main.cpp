@@ -11,7 +11,7 @@ using namespace BwTree;
 
 template<typename Key>
 void testBwTree() {
-    std::cout << "threads, operations,percent read operations, settings, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
+    std::cout << "threads, operations,percent read operations, settings split leaf, settings split inner, settings delta, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
             "leaf split time avg, successful inner consolidation, failed inner consolidation, inner consolidation time avg, successful inner split, failed innersplit, inner split time avg" << std::endl;
     std::default_random_engine d;
 
@@ -28,9 +28,9 @@ void testBwTree() {
         initial_values[i] = val;
     }
 
-    std::vector<std::size_t> numberValuesChoice{{1000000,10000000, 20000000, 30000000}};//1000, 10000, 100000,1000000,10000000}};
+    std::vector<std::size_t> numberValuesChoice{{10000000, 20000000, 30000000, 50000000}};//1000, 10000, 100000,1000000,10000000}};
     for (auto &numberValues : numberValuesChoice) {
-        for (int numberOfThreads = 1; numberOfThreads <= 4; ++numberOfThreads) {
+        for (int numberOfThreads = 1; numberOfThreads <= 8; ++numberOfThreads) {
 
             std::uniform_int_distribution<Key> rand(1, numberValues * 2);
             std::vector<Key> values(numberValues);
@@ -46,12 +46,41 @@ void testBwTree() {
 
 
             std::vector<BwTree::Settings> settingsList{{
-                    BwTree::Settings("single", 200, {{100}}, 5, {{5}}),
-                    BwTree::Settings("multiple consolidate", 200, {{100}}, 5, {{2, 3, 4}}),
-                    BwTree::Settings("multiple split and consolidate", 200, {{50, 100, 200}}, 5, {{2, 3, 4}})
+/*                    BwTree::Settings("single", 200, {{100}}, 5, {{5}}),
+                    BwTree::Settings("single", 200, {{100}}, 7, {{6}}),
+                    BwTree::Settings("single", 200, {{100}}, 7, {{5,6}}),
+                    BwTree::Settings("single", 200, {{100}}, 7, {{4,5,6}}),
+                    BwTree::Settings("single", 200, {{100}}, 7, {{5,6,7}}),
+
+                    BwTree::Settings("single", 200, {{100}}, 5, {{7}}),*/
+                    BwTree::Settings("200, 100, 4", 200, {{100}}, 4, {{4}}),
+                    BwTree::Settings("200, 100, 5", 200, {{100}}, 5, {{5}}),
+                    BwTree::Settings("200, 100, 6", 200, {{100}}, 6, {{6}}),
+                    BwTree::Settings("200, 100, 7", 200, {{100}}, 7, {{7}}),
+                    BwTree::Settings("200, 100, 8", 200, {{100}}, 8, {{8}}),
+
+
+                    BwTree::Settings("50, 100, 7", 50, {{100}}, 7, {{7}}),
+                    BwTree::Settings("100, 100, 7", 100, {{100}}, 7, {{7}}),
+                    BwTree::Settings("200, 100, 7", 200, {{100}}, 7, {{7}}),
+                    BwTree::Settings("300, 100, 7", 300, {{100}}, 7, {{7}}),
+                    BwTree::Settings("400, 100, 7", 400, {{100}}, 7, {{7}}),
+
+                    BwTree::Settings("50, 200, 7", 50, {{200}}, 7, {{7}}),
+                    BwTree::Settings("100, 200, 7", 100, {{200}}, 7, {{7}}),
+                    BwTree::Settings("200, 200, 7", 200, {{200}}, 7, {{7}}),
+                    BwTree::Settings("300, 200, 7", 300, {{200}}, 7, {{7}}),
+                    BwTree::Settings("400, 200, 7", 400, {{200}}, 7, {{7}}),
+
+                    //BwTree::Settings("single", 200, {{100}}, 8, {{8}}),
+
+
+
+                    //BwTree::Settings("multiple consolidate", 200, {{100}}, 5, {{2, 3, 4}}),
+                    //BwTree::Settings("multiple split and consolidate", 200, {{50, 100, 200}}, 5, {{2, 3, 4}})
             }};
             for (auto &settings : settingsList) {
-                std::vector<std::tuple<std::size_t, int>> operationsList{{std::make_tuple(values.size(), 83)}};//,std::make_tuple(values.size(),50),std::make_tuple(values.size(),33)}};
+                std::vector<std::tuple<std::size_t, int>> operationsList{{std::make_tuple(values.size(), 83), std::make_tuple(values.size(), 0), std::make_tuple(values.size(), 100)}};
                 for (const auto &operationsTuple : operationsList) {
                     Tree<Key,Key> tree(settings);
                     createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0, tree, false);
@@ -92,7 +121,7 @@ void testBwTree() {
 };
 
 template<typename Key>
-std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<Key> &values, const std::vector<Key> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<Key,Key> &tree, bool block) {
+std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads, const std::vector<Key> &values, const std::vector<Key> &initial_values, const std::size_t operations, const unsigned percentRead, BwTree::Tree<Key, Key> &tree, bool block) {
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned> rand(1, 100);
 
@@ -101,22 +130,22 @@ std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads
     std::size_t delta = values.size() / numberOfThreads;
     std::size_t startOps = 0;
     std::size_t deltaOps = operations / numberOfThreads;
-    std::vector<std::vector<BwTreeCommand<Key,Key>>> commands(numberOfThreads);
+    std::vector<std::vector<BwTreeCommand<Key, Key>>> commands(numberOfThreads);
     for (std::size_t i = 0; i < numberOfThreads; ++i) {
         std::uniform_int_distribution<std::size_t> randCoin(1, 2);
         std::size_t writeOperations = 0;
-        std::vector<BwTreeCommand<Key,Key>> &cmds = commands[i];
+        std::vector<BwTreeCommand<Key, Key>> &cmds = commands[i];
         for (std::size_t i = 0; i < deltaOps; ++i) {
             if ((rand(d) < percentRead) || writeOperations == delta) {
                 if (writeOperations != 0 && randCoin(d) == 1) {
                     std::uniform_int_distribution<std::size_t> randRead(0, writeOperations);
-                    cmds.push_back(BwTreeCommand<Key,Key>(BwTreeCommandType::search, values[start + randRead(d)], nullptr));
+                    cmds.push_back(BwTreeCommand<Key, Key>(BwTreeCommandType::search, values[start + randRead(d)], nullptr));
                 } else {
                     std::uniform_int_distribution<std::size_t> randRead(0, initial_values.size());
-                    cmds.push_back(BwTreeCommand<Key,Key>(BwTreeCommandType::search, initial_values[randRead(d)], nullptr));
+                    cmds.push_back(BwTreeCommand<Key, Key>(BwTreeCommandType::search, initial_values[randRead(d)], nullptr));
                 }
             } else {
-                cmds.push_back(BwTreeCommand<Key,Key>(BwTreeCommandType::insert, values[start + writeOperations], &values[start + writeOperations]));
+                cmds.push_back(BwTreeCommand<Key, Key>(BwTreeCommandType::insert, values[start + writeOperations], &values[start + writeOperations]));
                 writeOperations++;
             }
         }
@@ -134,7 +163,7 @@ std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads
 }
 
 template<typename Key>
-void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<Key,Key>>> &commands, BwTree::Tree<Key,Key> &tree) {
+void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<Key, Key>>> &commands, BwTree::Tree<Key, Key> &tree) {
     std::vector<std::thread> threads;
     for (auto &cmds : commands) {
         threads.push_back(std::thread([&tree, &cmds]() {
@@ -235,7 +264,7 @@ void randomThreadTest() {
 }
 
 int main() {
-    testBwTree();
+    testBwTree<unsigned long long>();
     //randomThreadTest();
     return 0;
     /**
