@@ -286,6 +286,11 @@ namespace BwTree {
             case PageType::deltaDelete:
             case PageType::deltaSplit:
             case PageType::leaf: {
+                if (res.needConsolidatePage == res.pid) {
+                    consolidateLeafPage(res.pid, res.startNode);
+                    insert(key, record);
+                    return;
+                }
                 DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
                 if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
                     ++atomicCollisions;
