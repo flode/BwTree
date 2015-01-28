@@ -3,7 +3,7 @@ project(BwTree)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -std=c++11")
 
-set(SOURCE_FILES main.cpp bwtree.hpp bwtree.cpp epoque.hpp nodes.hpp)
+set(SOURCE_FILES main.cpp main.hpp bwtree.hpp bwtree.cpp epoque.hpp nodes.hpp)
 
 find_package (Threads)
 add_executable(BwTree ${SOURCE_FILES})
