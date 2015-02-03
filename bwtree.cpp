@@ -251,7 +251,7 @@ namespace BwTree {
                         nextNode = nullptr;
                         continue;
                     };
-                    case PageType::deltaSplit: {
+                    case PageType::deltaSplitInner: {
                         auto node1 = static_cast<DeltaSplit<Key, Data> *>(nextNode);
                         if (key > node1->key) {
                             nextPID = node1->sidelink;
