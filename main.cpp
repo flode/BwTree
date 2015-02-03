@@ -18,14 +18,16 @@ void testBwTree() {
     std::size_t initial_values_count = 1000000;
     std::uniform_int_distribution<Key> rand(1, initial_values_count * 2);
     std::vector<Key> initial_values(initial_values_count);
-    std::unordered_set<Key> keys;
-    for (std::size_t i = 0; i < initial_values_count; ++i) {
-        Key val;
-        do {
-            val = rand(d);
-        } while (keys.find(val) != keys.end());
-        keys.emplace(val);
-        initial_values[i] = val;
+    {
+        std::unordered_set<Key> keys;
+        for (std::size_t i = 0; i < initial_values_count; ++i) {
+            Key val;
+            do {
+                val = rand(d);
+            } while (keys.find(val) != keys.end());
+            keys.emplace(val);
+            initial_values[i] = val;
+        }
     }
 
     std::vector<std::size_t> numberValuesChoice{{10000000, 20000000, 30000000, 50000000}};//1000, 10000, 100000,1000000,10000000}};
@@ -34,14 +36,17 @@ void testBwTree() {
 
             std::uniform_int_distribution<Key> rand(1, numberValues * 2);
             std::vector<Key> values(numberValues);
-            std::unordered_set<Key> keys;
-            for (std::size_t i = 0; i < numberValues; ++i) {
-                unsigned long long val;
-                do {
-                    val = rand(d);
-                } while (keys.find(val) != keys.end());
-                keys.emplace(val);
-                values[i] = val;
+
+            {
+                std::unordered_set<Key> keys;
+                for (std::size_t i = 0; i < numberValues; ++i) {
+                    unsigned long long val;
+                    do {
+                        val = rand(d);
+                    } while (keys.find(val) != keys.end());
+                    keys.emplace(val);
+                    values[i] = val;
+                }
             }
 
 
