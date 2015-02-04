@@ -9,7 +9,7 @@ namespace BwTree {
     class Epoque {
         static constexpr std::size_t epoquescount{40000};
         std::atomic<std::size_t> epoques[epoquescount];
-        std::vector<std::array<Node<Key, Data> *, 30>> deletedNodes{epoquescount};
+        std::vector<std::array<Node<Key, Data> *, 40>> deletedNodes{epoquescount};
         std::atomic<std::size_t> deleteNodeNext[epoquescount];
         std::atomic<std::size_t> oldestEpoque{0};
         std::atomic<std::size_t> newestEpoque{0};
@@ -21,6 +21,15 @@ namespace BwTree {
             epoques[newestEpoque].store(0);
             deleteNodeNext[newestEpoque].store(0);
         }
+	
+	~Epoque() {
+            for (std::size_t i = oldestEpoque; i != newestEpoque; i = (i + 1) % epoquescount) {
+	        for (std::size_t j = 0, end = deleteNodeNext[i]; j < end; ++j) {
+	            freeNodeRecursively<Key, Data>(deletedNodes[i].at(j));
+	        }
+                deleteNodeNext[i].store(0);
+            }	
+	}
 
         size_t enterEpoque();
 
