@@ -428,7 +428,6 @@ namespace BwTree {
                 ++atomicCollisions;
                 // check if parent has been split
                 std::tie(needSplitPageParent, parentNode) = findInnerNodeOnLevel(needSplitPageParent, Kq);
-                assert(mapping[needSplitPageParent] == parentNode);
                 if (++TMPsplitCollisions > 0)
                     assert(TMPsplitCollisions < 100);
             } else {
