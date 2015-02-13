@@ -21,15 +21,15 @@ namespace BwTree {
             epoques[newestEpoque].store(0);
             deleteNodeNext[newestEpoque].store(0);
         }
-	
-	~Epoque() {
+
+        ~Epoque() {
             for (std::size_t i = oldestEpoque; i != newestEpoque; i = (i + 1) % epoquescount) {
-	        for (std::size_t j = 0, end = deleteNodeNext[i]; j < end; ++j) {
-	            freeNodeRecursively<Key, Data>(deletedNodes[i].at(j));
-	        }
+                for (std::size_t j = 0, end = deleteNodeNext[i]; j < end; ++j) {
+                    freeNodeRecursively<Key, Data>(deletedNodes[i].at(j));
+                }
                 deleteNodeNext[i].store(0);
-            }	
-	}
+            }
+        }
 
         size_t enterEpoque();
 
@@ -124,6 +124,60 @@ namespace BwTree {
         mutex.unlock();
     }
 
+//     template<typename Key, typename Data>
+// void EpoqueManager<Key, Data>::leaveEpoque(size_t e) {
+//     openEpoques--;
+//     if (--epoques[e] > 0 || !mutex.try_lock()) {
+//         return;
+//     }
+//     std::array<Node<Key, Data> *, 20> nodes;
+//     std::size_t nextNodeIndex = 0;
+//     std::size_t oldestEpoque = this->oldestEpoque;
+//
+//     std::size_t i;
+//     for (i = oldestEpoque; i != e; i = (i + 1) % epoquescount) {
+//         if (epoques[i] == 0) {
+//             //unsigned long deletedNodeIndex = deleteNodeNext[i].load() - 1;
+//             bool nodesFull = false;
+//             for (unsigned long j = 0; j < deleteNodeNext[i].load(); ++j) {
+//                 nodes[nextNodeIndex] = deletedNodes[i].at(deleteNodeNext[i].load() - j - 1);
+//                 nextNodeIndex++;
+//                 if (nextNodeIndex == nodes.size()) {
+//                     nodesFull = true;
+//                     if (deleteNodeNext[i].load() - j - 1 != 0) {
+//                         std::cerr << "not all freed" << std::endl;
+//                         deleteNodeNext[i].store(deleteNodeNext[i].load() - j - 1);
+//                         break;
+//                     } else {
+//                         i = (i + 1) % epoquescount;
+//                         break;
+//                     }
+//                 }
+//             }
+//             if (nodesFull) {
+//                 break;
+//             }
+//         } else {
+//             break;
+//         }
+//     }
+//     std::size_t lastEpoque = i;
+//     if (oldestEpoque == lastEpoque) {
+//         mutex.unlock();
+//         return;
+//     }
+//     bool exchangeSuccessful = this->oldestEpoque.compare_exchange_weak(oldestEpoque, lastEpoque);
+//
+//     if (exchangeSuccessful) {
+//         for (std::size_t i = 0; i < nextNodeIndex; ++i) {
+//             freeNodeRecursively<Key, Data>(nodes[i]);
+//         }
+//     } else {
+//         std::cerr << "failed";
+//     }
+//     mutex.unlock();
+// }
+
     template<typename Key, typename Data>
     size_t Epoque<Key, Data>::enterEpoque() {
         std::lock_guard<std::mutex> guard(mutex);
@@ -133,7 +187,7 @@ namespace BwTree {
             ++epoques[newestEpoque];
             return newestEpoque;
         }
-        newestEpoque.store((newestEpoque + 1) % epoquescount); // TODO doesn't change newestEpoque
+        newestEpoque.store((newestEpoque + 1) % epoquescount);
         if (newestEpoque == oldestEpoque) {
             std::cout << " " << newestEpoque << " " << oldestEpoque;
         }

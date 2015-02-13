@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include "bwtree.hpp"
 #include <cassert>
-#include <algorithm>
 #include <unordered_set>
 
 namespace BwTree {
