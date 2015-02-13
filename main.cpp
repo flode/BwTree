@@ -28,11 +28,9 @@ void testBwTree() {
             initial_values[i] = val;
         }
     }
-
-    std::vector<std::size_t> numberValuesChoice{{10000000, 20000000, 30000000, 50000000}};//1000, 10000, 100000,1000000,10000000}};
+    std::vector<std::size_t> numberValuesChoice{{42000000}};//;, 20000000, 30000000, 50000000}};//1000, 10000, 100000,1000000,10000000}};
     for (auto &numberValues : numberValuesChoice) {
         for (int numberOfThreads = 1; numberOfThreads <= 8; ++numberOfThreads) {
-
             std::uniform_int_distribution<Key> rand(1, numberValues * 2);
             std::vector<Key> values(numberValues);
 
@@ -57,7 +55,7 @@ void testBwTree() {
                     BwTree::Settings("single", 200, {{100}}, 7, {{5,6,7}}),
 
                     BwTree::Settings("single", 200, {{100}}, 5, {{7}}),*/
-                    BwTree::Settings("200, 100, 4", 200, {{100}}, 4, {{4}}),
+/*                    BwTree::Settings("200, 100, 4", 200, {{100}}, 4, {{4}}),
                     BwTree::Settings("200, 100, 5", 200, {{100}}, 5, {{5}}),
                     BwTree::Settings("200, 100, 6", 200, {{100}}, 6, {{6}}),
                     BwTree::Settings("200, 100, 7", 200, {{100}}, 7, {{7}}),
@@ -75,6 +73,23 @@ void testBwTree() {
                     BwTree::Settings("200, 200, 7", 200, {{200}}, 7, {{7}}),
                     BwTree::Settings("300, 200, 7", 300, {{200}}, 7, {{7}}),
                     BwTree::Settings("400, 200, 7", 400, {{200}}, 7, {{7}}),
+		    */
+/*                    BwTree::Settings("400, 200, 7, 7", 400, {{200}}, 7, {{7}}),
+                    BwTree::Settings("800, 200, 7, 7", 800, {{200}}, 7, {{7}}),
+                    BwTree::Settings("8000, 200, 7, 7", 8000, {{200}}, 7, {{7}}),*/
+
+
+                    BwTree::Settings("400, 200, 7, 7", 400, {{200}}, 7, {{7}}),
+                    BwTree::Settings("400, 400, 7, 7", 400, {{400}}, 7, {{7}}),
+                    BwTree::Settings("400, 4000, 7, 7", 400, {{4000}}, 7, {{7}}),
+
+                    BwTree::Settings("400, 200, 7, 27", 400, {{200}}, 7, {{2,7}}),
+                    BwTree::Settings("400, 200, 7, 37", 400, {{200}}, 7, {{3,7}}),
+                    BwTree::Settings("400, 200, 7, 347", 400, {{200}}, 7, {{3,4,7}}),
+
+                    BwTree::Settings("400, 200, 2, 7", 400, {{200}}, 7, {{7}}),
+                    BwTree::Settings("400, 200, 7, 7", 400, {{200}}, 7, {{7}}),
+                    BwTree::Settings("400, 200, 14, 7", 400, {{200}}, 7, {{7}}),
 
                     //BwTree::Settings("single", 200, {{100}}, 8, {{8}}),
 
@@ -183,77 +198,96 @@ void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<Key, Key>
 }
 
 
-void randomThreadTest() {
-    std::vector<std::thread> threads;
-    constexpr int numberOfThreads = 4;
-    constexpr int numberValues = 5000000;
-
-
-    std::default_random_engine d;
-    std::uniform_int_distribution<unsigned long long> rand(1, 99999999);
-    std::vector<unsigned long long> values(numberValues);
-    std::unordered_set<unsigned long long> keys;
-    for (std::size_t i = 0; i < numberValues; ++i) {
-        unsigned long long val;
-        do {
-            val = rand(d);
-        } while (keys.find(val) != keys.end());
-        keys.emplace(val);
-        values[i] = val;
-    }
-
-
-    auto starttime = std::chrono::system_clock::now();
-
-    std::vector<std::size_t> splitInner{{100}};
-    std::vector<std::size_t> consolidateInner{{2, 3, 4}};
-    BwTree::Settings settings("default", 200, splitInner, 5, consolidateInner);
-    Tree<unsigned long long, unsigned long long> tree(settings);
-
-    std::size_t start = 0;
-    std::size_t delta = numberValues / numberOfThreads;
-    const auto &t_values = values;
-    for (int i = 0; i < numberOfThreads; ++i) {
-        threads.push_back(std::thread([&tree, &t_values, start, delta]() {
-            for (int i = start; i < start + delta; ++i) {
-                tree.insert(t_values[i], &(t_values[i]));
-            }
-            for (int i = start; i < start + delta; ++i) {
-                auto &v = t_values[i];
-                auto r = tree.search(v);
-                if (r == nullptr || *r != v) {
-                    std::cout << "wrong value inner!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
-                }
-            }
-        }));
-        start += delta;
-    }
-
-    for (auto &thread : threads) {
-        thread.join();
-    }
-    for (auto &v : values) {
-        auto r = tree.search(v);
-        if (r == nullptr || *r != v) {
-            std::cout << "wrong value!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
-        }
-    }
-
-    std::cout << "    " << c << std::endl;
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
-    std::cout << "Elapsed time in ms: " << duration.count() << std::endl;
-
-
-    std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
-    std::cout << "successful leaf consolidation: " << tree.getSuccessfulLeafConsolidate() << std::endl;
-    std::cout << "failed leaf consolidation: " << tree.getFailedLeafConsolidate() << std::endl;
-    std::cout << "successful leaf split: " << tree.getSuccessfulLeafSplit() << std::endl;
-    std::cout << "failed leaf split: " << tree.getFailedLeafSplit() << std::endl;
-    std::cout << "successful inner consolidation: " << tree.getSuccessfulInnerConsolidate() << std::endl;
-    std::cout << "failed inner consolidation: " << tree.getFailedInnerConsolidate() << std::endl;
-    std::cout << "successful inner split: " << tree.getSuccessfulInnerSplit() << std::endl;
-    std::cout << "failed innersplit: " << tree.getFailedInnerSplit() << std::endl;
-}
+//void randomThreadTest() {
+//    std::vector<std::thread> threads;
+//    constexpr std::size_t numberOfThreads = 1;
+//    constexpr std::size_t numberValues = 2000000;
+//
+//
+//    std::default_random_engine d;
+//    std::uniform_int_distribution<unsigned long long> rand(1, 99999999);
+//    std::vector<unsigned long long> values(numberValues);
+//    std::unordered_set<unsigned long long> keys;
+//    for (std::size_t i = 0; i < numberValues; ++i) {
+//        unsigned long long val;
+//        do {
+//            val = rand(d);
+//        } while (keys.find(val) != keys.end());
+//        keys.emplace(val);
+//        values[i] = val;
+//    }
+//
+//
+//    auto starttime = std::chrono::system_clock::now();
+//
+//    std::vector<std::size_t> splitInner{{100}};
+//    std::vector<std::size_t> consolidateInner{{2, 3, 4}};
+//    BwTree::Settings settings("default", 200, splitInner, 5, consolidateInner);
+//    BLOCK();
+//    Tree<unsigned long long, unsigned long long> tree(settings);
+//
+//    std::atomic<int> c{0};
+//    std::size_t start = 0;
+//    std::size_t delta = numberValues / numberOfThreads;
+//    const auto &t_values = values;
+//    for (std::size_t i = 0; i < numberOfThreads; ++i) {
+//        threads.push_back(std::thread([&tree, &t_values, start, delta, &c]() {
+//            for (std::size_t i = start; i < start + delta; ++i) {
+//                //std::cout << "i: " << i<< " " << t_values[i] << std::endl;
+//                tree.insert(t_values[i], &(t_values[i]));
+//
+//                /*for (int j = 6703; j <= i; ++j) {
+//                    //std::cout << "i: " << i<< std::endl;
+//                    auto &v = t_values[j];
+//                    auto r = tree.search(v);
+//                    if (r == nullptr || *r != v) {
+//                        c++;
+//                        std::cout << "wrong value inner!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+//                    }
+//                }
+//                tree.testAutomaton();*/
+//            }
+//            //tree.testAutomaton();
+//            for (std::size_t i = start; i < start + delta; ++i) {
+//                //std::cout << "i: " << i<< std::endl;
+//                auto &v = t_values[i];
+//                auto r = tree.search(v);
+//                if (r == nullptr || *r != v) {
+//                    c++;
+//                    //std::cout << "wrong value inner!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+//                }
+//            }
+//        }));
+//        start += delta;
+//    }
+//
+//    for (auto &thread : threads) {
+//        thread.join();
+//    }
+//    BLOCK();
+////    starttime = std::chrono::system_clock::now();
+//    for (auto &v : values) {
+//        auto r = tree.search(v);
+//        if (r == nullptr || *r != v) {
+//            // std::cout << "wrong value!! " << (r == nullptr ? "NULLPTR" : std::to_string(*r)) << " " << v << std::endl;
+//            c++;
+//        }
+//    }
+//    std::cout << "    " << c << std::endl;
+//    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
+//    std::cout << "Elapsed time in ms: " << duration.count() << std::endl;
+//
+//
+//    std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
+//    std::cout << "successful leaf consolidation: " << tree.getSuccessfulLeafConsolidate() << std::endl;
+//    std::cout << "failed leaf consolidation: " << tree.getFailedLeafConsolidate() << std::endl;
+//    std::cout << "successful leaf split: " << tree.getSuccessfulLeafSplit() << std::endl;
+//    std::cout << "failed leaf split: " << tree.getFailedLeafSplit() << std::endl;
+//    std::cout << "successful inner consolidation: " << tree.getSuccessfulInnerConsolidate() << std::endl;
+//    std::cout << "failed inner consolidation: " << tree.getFailedInnerConsolidate() << std::endl;
+//    std::cout << "successful inner split: " << tree.getSuccessfulInnerSplit() << std::endl;
+//    std::cout << "failed innersplit: " << tree.getFailedInnerSplit() << std::endl;
+//}
 
 int main() {
     testBwTree<unsigned long long>();
