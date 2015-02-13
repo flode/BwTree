@@ -11,10 +11,9 @@ using namespace BwTree;
 
 template<typename Key>
 void testBwTree() {
-    std::cout << "threads, operations,percent read operations, settings split leaf, settings split inner, settings delta, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, leaf consolidation time avg, successful leaf split, failed leaf split,"
-            "leaf split time avg, successful inner consolidation, failed inner consolidation, inner consolidation time avg, successful inner split, failed innersplit, inner split time avg" << std::endl;
+    std::cout << "threads, operations,percent read operations, settings split leaf, settings split inner, settings delta, settings delta inner, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, successful leaf split, failed leaf split,"
+            "successful inner consolidation, failed inner consolidation, successful inner split, failed innersplit" << std::endl;
     std::default_random_engine d;
-
     std::size_t initial_values_count = 1000000;
     std::uniform_int_distribution<Key> rand(1, initial_values_count * 2);
     std::vector<Key> initial_values(initial_values_count);
@@ -84,12 +83,13 @@ void testBwTree() {
                     //BwTree::Settings("multiple consolidate", 200, {{100}}, 5, {{2, 3, 4}}),
                     //BwTree::Settings("multiple split and consolidate", 200, {{50, 100, 200}}, 5, {{2, 3, 4}})
             }};
+
             for (auto &settings : settingsList) {
                 std::vector<std::tuple<std::size_t, int>> operationsList{{std::make_tuple(values.size(), 83), std::make_tuple(values.size(), 0), std::make_tuple(values.size(), 100)}};
                 for (const auto &operationsTuple : operationsList) {
-                    Tree<Key,Key> tree(settings);
-                    createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0, tree, false);
+                    Tree<Key, Key> tree(settings);
 
+                    createBwTreeCommands(1, initial_values, initial_values, initial_values_count, 0, tree, false);
                     const std::size_t operations = std::get<0>(operationsTuple);
                     const std::size_t percentRead = std::get<1>(operationsTuple);
                     auto duration = createBwTreeCommands(numberOfThreads, values, initial_values, operations, percentRead, tree, false);
@@ -99,24 +99,15 @@ void testBwTree() {
                     std::cout << duration.count() << ", ";
                     std::cout << (operations / duration.count() * 1000) << ", ";
 
-
                     std::cout << tree.getAtomicCollisions() << ",";
                     std::cout << tree.getSuccessfulLeafConsolidate() << ",";
                     std::cout << tree.getFailedLeafConsolidate() << ",";
-                    if (tree.getSuccessfulLeafConsolidate() != 0)std::cout << tree.getTimeForLeafConsolidation() / tree.getSuccessfulLeafConsolidate();
-                    std::cout << ",";
                     std::cout << tree.getSuccessfulLeafSplit() << ",";
                     std::cout << tree.getFailedLeafSplit() << ",";
-                    if (tree.getSuccessfulLeafSplit() != 0)std::cout << tree.getTimeForLeafSplit() / tree.getSuccessfulLeafSplit();
-                    std::cout << ",";
                     std::cout << tree.getSuccessfulInnerConsolidate() << ",";
                     std::cout << tree.getFailedInnerConsolidate() << ",";
-                    if (tree.getSuccessfulInnerConsolidate() != 0)std::cout << tree.getTimeForInnerConsolidation() / tree.getSuccessfulInnerConsolidate();
-                    std::cout << ",";
                     std::cout << tree.getSuccessfulInnerSplit() << ",";
                     std::cout << tree.getFailedInnerSplit() << ",";
-                    if (tree.getSuccessfulInnerSplit() != 0)std::cout << tree.getTimeForInnerSplit() / tree.getSuccessfulInnerSplit();
-                    std::cout << ",";
                     std::cout << std::endl;
                 }
             }
@@ -256,16 +247,12 @@ void randomThreadTest() {
     std::cout << "exchange collisions: " << tree.getAtomicCollisions() << std::endl;
     std::cout << "successful leaf consolidation: " << tree.getSuccessfulLeafConsolidate() << std::endl;
     std::cout << "failed leaf consolidation: " << tree.getFailedLeafConsolidate() << std::endl;
-    if (tree.getSuccessfulLeafConsolidate() != 0)std::cout << "leaf consolidation time avg: " << tree.getTimeForLeafConsolidation() / tree.getSuccessfulLeafConsolidate() << std::endl;
     std::cout << "successful leaf split: " << tree.getSuccessfulLeafSplit() << std::endl;
     std::cout << "failed leaf split: " << tree.getFailedLeafSplit() << std::endl;
-    if (tree.getSuccessfulLeafSplit() != 0)std::cout << "leaf split time avg: " << tree.getTimeForLeafSplit() / tree.getSuccessfulLeafSplit() << std::endl;
     std::cout << "successful inner consolidation: " << tree.getSuccessfulInnerConsolidate() << std::endl;
     std::cout << "failed inner consolidation: " << tree.getFailedInnerConsolidate() << std::endl;
-    if (tree.getSuccessfulInnerConsolidate() != 0)std::cout << "inner consolidation time avg: " << tree.getTimeForInnerConsolidation() / tree.getSuccessfulInnerConsolidate() << std::endl;
     std::cout << "successful inner split: " << tree.getSuccessfulInnerSplit() << std::endl;
     std::cout << "failed innersplit: " << tree.getFailedInnerSplit() << std::endl;
-    if (tree.getSuccessfulInnerSplit() != 0)std::cout << "inner split time avg: " << tree.getTimeForInnerSplit() / tree.getSuccessfulInnerSplit() << std::endl;
 }
 
 int main() {

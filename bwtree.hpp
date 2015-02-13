@@ -113,11 +113,6 @@ namespace BwTree {
         std::atomic<unsigned long> successfulInnerSplit{0};
         std::atomic<unsigned long> failedLeafSplit{0};
         std::atomic<unsigned long> failedInnerSplit{0};
-        std::atomic<long> timeForLeafConsolidation{0};
-        std::atomic<long> timeForInnerConsolidation{0};
-        std::atomic<long> timeForLeafSplit{0};
-
-        std::atomic<long> timeForInnerSplit{0};
 
         Epoque<Key, Data> epoque;
 
@@ -253,21 +248,6 @@ namespace BwTree {
             return failedInnerSplit;
         }
 
-        long getTimeForLeafConsolidation() const {
-            return timeForLeafConsolidation;
-        }
-
-        long getTimeForInnerConsolidation() const {
-            return timeForInnerConsolidation;
-        }
-
-        long getTimeForLeafSplit() const {
-            return timeForLeafSplit;
-        }
-
-        long getTimeForInnerSplit() const {
-            return timeForInnerSplit;
-        }
     };
 }
 

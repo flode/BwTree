@@ -322,7 +322,6 @@ namespace BwTree {
         if (DEBUG) std::cout << "split page" << std::endl;
         Node<Key, Data> *startNode = PIDToNodePtr(needSplitPage);
         bool leaf = isLeaf(startNode);
-        auto starttime = std::chrono::system_clock::now();
 
         Key Kp, Kq;
         LinkedNode<Key, Data> *newRightNode;
@@ -390,16 +389,6 @@ namespace BwTree {
             freeNodeSingle<Key, Data>(newRightNode);
             mapping[newRightNodePID].store(nullptr);
             return;
-        } else {
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
-            if (!leaf) {
-                timeForInnerSplit.store(timeForInnerSplit + duration.count());
-
-                ++successfulInnerSplit;
-            } else {
-                timeForLeafSplit.store(timeForLeafSplit + duration.count());
-                ++successfulLeafSplit;
-            }
         }
 
         if (needSplitPageParent == NotExistantPID) {
@@ -440,7 +429,6 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateLeafPage(const PID pid, Node<Key, Data> *startNode) {
         if (DEBUG) std::cout << "consolidate leaf page" << std::endl;
-        auto starttime = std::chrono::system_clock::now();
 
         static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
         std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
@@ -456,9 +444,6 @@ namespace BwTree {
             ++atomicCollisions;
             ++failedLeafConsolidate;
         } else {
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
-            timeForLeafConsolidation.store(timeForLeafConsolidation + duration.count());
-
             ++successfulLeafConsolidate;
             epoque.markForDeletion(previousNode);
         }
@@ -573,7 +558,6 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Tree<Key, Data>::consolidateInnerPage(const PID pid, Node<Key, Data> *startNode) {
         if (DEBUG) std::cout << "consolidate inner page" << std::endl;
-        auto starttime = std::chrono::system_clock::now();
 
         static thread_local std::vector<std::tuple<Key, PID>> nodesStatic;
         std::vector<std::tuple<Key, PID>> &nodes = nodesStatic;
@@ -590,9 +574,6 @@ namespace BwTree {
             ++atomicCollisions;
             ++failedInnerConsolidate;
         } else {
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - starttime);
-            timeForInnerConsolidation.store(timeForInnerConsolidation + duration.count());
-
             ++successfulInnerConsolidate;
             epoque.markForDeletion(previousNode);
         }
