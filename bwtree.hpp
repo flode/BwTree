@@ -99,7 +99,7 @@ namespace BwTree {
         * - Leaf nodes always contain special infinity value at the right end for the last pointer
         */
         std::atomic<PID> root;
-        std::vector<std::atomic<Node<Key, Data> *>> mapping{1000000};
+        std::vector<std::atomic<Node<Key, Data> *>> mapping{4194304};
         //std::atomic<Node<Key,Data>*> mapping[2048];
         //std::array<std::atomic<Node<Key,Data>*>,2048> mapping{};
         //PID mappingSize = 2048;
@@ -193,7 +193,7 @@ namespace BwTree {
             PID dataNodePID = newNode(datanode);
             InnerNode<Key, Data> *innerNode = InnerNode<Key, Data>::create(1, NotExistantPID, NotExistantPID);
             innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(), dataNodePID);
-            root = newNode(innerNode);
+            root.store(newNode(innerNode));
         }
 
         ~Tree();
@@ -248,6 +248,115 @@ namespace BwTree {
             return failedInnerSplit;
         }
 
+//        void testAutomaton() {
+//            PID nextPID = 0;
+//            Data lastvalue = 0;
+//            while (nextPID != NotExistantPID) {
+//                //std::cout << std::endl;
+//
+//                Node<Key, Data> *nextNode = PIDToNodePtr(nextPID);
+//                /*if (nextNode->type != PageType::leaf) {
+//                    consolidateLeafPage(nextPID, nextNode);
+//                    nextNode = PIDToNodePtr(nextPID);
+//                }*/
+//
+//                PID splitPID = NotExistantPID;
+//                Key splitKey = std::numeric_limits<Key>::max();
+//                while (nextNode != nullptr) {
+//                    switch (nextNode->type) {
+//                        /* case PageType::deltaIndex: {
+//                        auto node1 = static_cast<DeltaIndex<Key, Data> *>(nextNode);
+//                        if (key > node1->keyLeft && key <= node1->keyRight) {
+//                            level++;
+//                            nextPID = node1->child;
+//                            nextNode = nullptr;
+//                            break;
+//                        } else {
+//                            deltaNodeCount++;
+//                            nextNode = node1->origin;
+//                            continue;
+//                        }
+//                    };
+//                    case PageType::inner: {
+//                        auto node1 = static_cast<InnerNode<Key, Data> *>(nextNode);
+//                        if (node1->nodeCount + deltaNodeCount - removedBySplit > settings.SplitInnerPage && needSplitPage.size() == 0 && this->rand(this->d) - level < 10) {
+//                            if (DEBUG) std::cout << "inner count" << node1->nodeCount << " " << deltaNodeCount << " " << removedBySplit;
+//                            needSplitPage = parentNodes;
+//                        }
+//                        auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
+//                        if (res == node1->nodeCount && node1->next != NotExistantPID) {
+//                            parentNodes.pop();// to keep correct parent history upward
+//                            nextPID = node1->next;
+//                        } else {
+//                            level++;
+//                            nextPID = std::get<1>(node1->nodes[res]);
+//                        }
+//                        nextNode = nullptr;
+//                        break;
+//                    };*/
+//                        case PageType::leaf: {
+//                            auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
+//
+//                            for (std::size_t i = 0; i < node1->recordCount; ++i) {
+//                                if (std::get<0>(node1->records[i]) <= splitKey) {
+//                                    if (lastvalue > std::get<0>(node1->records[i])) {
+//                                        auto b = std::get<0>(node1->records[i]);
+//                                        std::cerr << b;
+//                                        std::cerr << std::endl;
+//                                        //exit(-1);
+//                                        assert(false);
+//                                    }
+//                                    lastvalue = std::get<0>(node1->records[i]);
+//                                    //std::cout << lastvalue << " ";
+//                                }
+//                            }
+//                            if (splitPID != NotExistantPID) {
+//                                nextPID = splitPID;
+//                            } else {
+//                                nextPID = node1->next;
+//                            }
+//                            nextNode = nullptr;
+//                            break;
+//                        };
+//                        case PageType::deltaInsert: {
+//                            auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
+//                            /*if (std::get<0>(node1->record) <= splitKey) {
+//                                if (lastvalue > std::get<0>(node1->record)) {
+//                                    assert(false);
+//                                }
+//                                lastvalue = std::get<0>(node1->record);
+//                                //std::cout << std::get<0>(node1->record) << " ";
+//                            }*/
+//                            nextNode = node1->origin;
+//                            assert(nextNode != nullptr);
+//                            continue;
+//                        };
+//                        case PageType::deltaDelete: {
+//                            auto node1 = static_cast<DeltaDelete<Key, Data> *>(nextNode);
+//                            //remember TODO
+//                            nextNode = node1->origin;
+//                            assert(nextNode != nullptr);
+//                            continue;
+//                        };
+//                        case PageType::deltaSplitInner:
+//                        case PageType::deltaSplit: {
+//                            auto node1 = static_cast<DeltaSplit<Key, Data> *>(nextNode);
+//                            if (splitPID == NotExistantPID) {
+//                                splitKey = node1->key;
+//                                splitPID = node1->sidelink;
+//                            }
+//                            nextNode = node1->origin;
+//                            assert(nextNode != nullptr);
+//                            continue;
+//                        };
+//                        default: {
+//                            assert(false); // not implemented
+//                        }
+//                    }
+//                    nextNode = nullptr;
+//                }
+//            }
+//        }
     };
 }
 
