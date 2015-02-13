@@ -79,7 +79,7 @@ namespace BwTree {
                 )) {//TODO save for later
                     needConsolidatePage = nextPID;
                 }
-                switch (nextNode->type) {
+                switch (nextNode->getType()) {
                     case PageType::deltaIndex: {
                         auto node1 = static_cast<DeltaIndex<Key, Data> *>(nextNode);
                         if (key > node1->keyLeft && key <= node1->keyRight) {
@@ -154,7 +154,7 @@ namespace BwTree {
                     //TODO save for later
                     needConsolidatePage = nextPID;
                 }
-                switch (nextNode->type) {
+                switch (nextNode->getType()) {
                     case PageType::leaf: {
                         auto node1 = static_cast<Leaf<Key, Data> *>(nextNode);
                         if (!doNotSplit && node1->recordCount + deltaNodeCount - removedBySplit > settings.getSplitLimitLeaf() && needSplitPage == NotExistantPID) {
@@ -230,7 +230,7 @@ namespace BwTree {
             Node<Key, Data> *startNode = PIDToNodePtr(nextPID);
             Node<Key, Data> *nextNode = startNode;
             while (nextNode != nullptr) {
-                switch (nextNode->type) {
+                switch (nextNode->getType()) {
                     case PageType::deltaIndex: {
                         auto node1 = static_cast<DeltaIndex<Key, Data> *>(nextNode);
                         if (key > node1->keyLeft && key <= node1->keyRight) {
@@ -410,7 +410,7 @@ namespace BwTree {
         std::size_t TMPsplitCollisions = 0;
         while (true) {
             Node<Key, Data> *parentNode = PIDToNodePtr(needSplitPageParent);
-            assert(parentNode->type == PageType::inner || parentNode->type == PageType::deltaIndex || parentNode->type == PageType::deltaSplitInner);
+            assert(!isLeaf(parentNode));
             DeltaIndex<Key, Data> *indexNode = DeltaIndex<Key, Data>::create(parentNode, Kp, Kq, newRightNodePID, needSplitPage);
             if (!mapping[needSplitPageParent].compare_exchange_strong(parentNode, indexNode)) {
                 freeNodeSingle<Key, Data>(indexNode);
@@ -458,8 +458,8 @@ namespace BwTree {
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
-        while (node->type != PageType::leaf) {
-            switch (node->type) {
+        while (node->getType() != PageType::leaf) {
+            switch (node->getType()) {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
                     auto &curKey = std::get<0>(node1->record);
@@ -590,7 +590,7 @@ namespace BwTree {
         PID prev, next;
         bool hadInfinityElement = false;
         while (node != nullptr) {
-            switch (node->type) {
+            switch (node->getType()) {
                 case PageType::inner: {
                     auto node1 = static_cast<InnerNode<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->nodeCount; ++i) {

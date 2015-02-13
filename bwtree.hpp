@@ -11,6 +11,7 @@
 #include <iostream>
 #include <stack>
 #include <assert.h>
+#include <sys/wait.h>
 
 #include "nodes.hpp"
 #include "epoque.hpp"
@@ -165,7 +166,7 @@ namespace BwTree {
         std::tuple<PID, Node<Key, Data> *> findInnerNodeOnLevel(PID pid, Key key);
 
         bool isLeaf(Node<Key, Data> *node) {
-            switch (node->type) {
+            switch (node->getType()) {
                 case PageType::inner: /* fallthrough */
                 case PageType::deltaSplitInner: /* fallthrough */
                 case PageType::deltaIndex:

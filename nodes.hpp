@@ -21,7 +21,12 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     struct Node {
+    protected:
         PageType type;
+    public:
+        const PageType &getType() const {
+            return type;
+        }
     };
 
 
@@ -230,7 +235,7 @@ namespace BwTree {
     template<typename Key, typename Data>
     void freeNodeRecursively(Node<Key, Data> *node) {
         while (node != nullptr) {
-            switch (node->type) {
+            switch (node->getType()) {
                 case PageType::inner: /* fallthrough */
                 case PageType::leaf: {
                     freeNodeSingle<Key, Data>(node);
