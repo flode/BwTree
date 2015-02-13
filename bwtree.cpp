@@ -332,7 +332,7 @@ namespace BwTree {
             PID prev, next;
             bool hadInfinityElement;
             std::tie(prev, next, hadInfinityElement) = getConsolidatedInnerData(startNode, needSplitPage, nodes);
-            if (nodes.size() < settings.getSplitLimitInner(0)) {//TODO exact level needed?
+            if (nodes.size() < settings.getSplitLimitInner(0)) {
                 return;
             }
             if (DEBUG) std::cout << "inner size: " << nodes.size() << std::endl;
@@ -361,10 +361,6 @@ namespace BwTree {
             }
             auto middle = records.begin();
             std::advance(middle, (std::distance(records.begin(), records.end()) / 2) - 1);
-            std::nth_element(records.begin(), middle, records.end(), [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
-                return std::get<0>(t1) < std::get<0>(t2);
-            });
-
             Kp = std::get<0>(*middle);
 
             auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromUnsorted(middle + 1, records.end(), needSplitPage, next);

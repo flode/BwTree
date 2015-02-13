@@ -101,9 +101,6 @@ namespace BwTree {
         */
         std::atomic<PID> root;
         std::vector<std::atomic<Node<Key, Data> *>> mapping{4194304};
-        //std::atomic<Node<Key,Data>*> mapping[2048];
-        //std::array<std::atomic<Node<Key,Data>*>,2048> mapping{};
-        //PID mappingSize = 2048;
         std::atomic<PID> mappingNext{0};
         std::atomic<unsigned long> atomicCollisions{0};
         std::atomic<unsigned long> successfulLeafConsolidate{0};
@@ -117,19 +114,13 @@ namespace BwTree {
 
         Epoque<Key, Data> epoque;
 
-
         const Settings &settings;
-
-        //std::mutex insertMutex;
-//        std::array<Node<Key, Data> *, 100000> deletedNodes;
-//        std::atomic<std::size_t> deleteNodeNext{0};
 
         Node<Key, Data> *PIDToNodePtr(const PID node) {
             return mapping[node];
         }
 
         PID newNode(Node<Key, Data> *node) {
-            //std::lock_guard<std::mutex> lock(insertMutex);
             PID nextPID = mappingNext++;
             if (nextPID >= mapping.size()) {
                 std::cerr << "Mapping table is full, aborting!" << std::endl;
@@ -144,7 +135,7 @@ namespace BwTree {
         */
         FindDataPageResult<Key, Data> findDataPage(Key key);
 
-        void consolidatePage(const PID pid) {//TODO add to a list
+        void consolidatePage(const PID pid) {
             Node<Key, Data> *node = PIDToNodePtr(pid);
             if (isLeaf(node)) {
                 consolidateLeafPage(pid, node);
