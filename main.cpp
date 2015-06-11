@@ -136,17 +136,16 @@ std::chrono::milliseconds createBwTreeCommands(const std::size_t numberOfThreads
     std::default_random_engine d;
     std::uniform_int_distribution<unsigned> rand(1, 100);
 
-    std::atomic<int> c{0};
     std::size_t start = 0;
     std::size_t delta = values.size() / numberOfThreads;
     std::size_t startOps = 0;
     std::size_t deltaOps = operations / numberOfThreads;
     std::vector<std::vector<BwTreeCommand<Key, Key>>> commands(numberOfThreads);
-    for (std::size_t i = 0; i < numberOfThreads; ++i) {
+    for (std::size_t thread_i = 0; thread_i < numberOfThreads; ++thread_i) {
         std::uniform_int_distribution<std::size_t> randCoin(1, 2);
         std::size_t writeOperations = 0;
-        std::vector<BwTreeCommand<Key, Key>> &cmds = commands[i];
-        for (std::size_t i = 0; i < deltaOps; ++i) {
+        std::vector<BwTreeCommand<Key, Key>> &cmds = commands[thread_i];
+        for (std::size_t op_i = 0; op_i < deltaOps; ++op_i) {
             if ((rand(d) < percentRead) || writeOperations == delta) {
                 if (writeOperations != 0 && randCoin(d) == 1) {
                     std::uniform_int_distribution<std::size_t> randRead(0, writeOperations);
