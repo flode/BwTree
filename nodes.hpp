@@ -37,10 +37,26 @@ namespace BwTree {
     };
 
     template<typename Key, typename Data>
+    struct KeyValue {
+        Key key;
+        const Data *data;
+
+        KeyValue(const Key &key, const Data *const & data) : key(key), data(data) { }
+
+        KeyValue operator=(const KeyValue &keyValue) {
+            key = keyValue.key;
+            data = keyValue.data;
+            return *this;
+        }
+
+        KeyValue() { }
+    };
+
+    template<typename Key, typename Data>
     struct Leaf : LinkedNode<Key, Data> {
         std::size_t recordCount;
         // has to be last member for dynamic operator new() !!!
-        std::tuple<Key, const Data *> records[];
+        KeyValue<Key, Data> records[];
 
         static Leaf<Key, Data> *create(std::size_t size, const PID &prev, const PID &next) {
             size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
@@ -58,12 +74,19 @@ namespace BwTree {
         ~Leaf() = delete;
     };
 
+    template<typename Key, typename Data>
+    struct KeyPid {
+        Key key;
+        PID pid;
+
+        KeyPid(const Key key, const PID pid) : key(key), pid(pid) { }
+    };
 
     template<typename Key, typename Data>
     struct InnerNode : LinkedNode<Key, Data> {
         std::size_t nodeCount;
         // has to be last member for dynamic operator new() !!!
-        std::tuple<Key, PID> nodes[];
+        KeyPid<Key, Data> nodes[];
 
         static InnerNode<Key, Data> *create(std::size_t size, const PID &prev, const PID &next) {
             size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
@@ -92,10 +115,10 @@ namespace BwTree {
 
     template<typename Key, typename Data>
     struct DeltaInsert : DeltaNode<Key, Data> {
-        std::tuple<Key, const Data *> record;
+        KeyValue<Key, Data> record;
         bool keyExistedBefore;
 
-        static DeltaInsert<Key, Data> *create(Node<Key, Data> *origin, const std::tuple<Key, const Data *> record, bool keyExistedBefore) {
+        static DeltaInsert<Key, Data> *create(Node<Key, Data> *origin, const KeyValue<Key, Data> record, bool keyExistedBefore) {
             size_t s = sizeof(DeltaInsert<Key, Data>);
             DeltaInsert<Key, Data> *output = (DeltaInsert<Key, Data> *) operator new(s);
             output->type = PageType::deltaInsert;
@@ -193,27 +216,28 @@ namespace BwTree {
 
         //template<typename Key, typename Data>
     public:
-        typedef typename std::vector<std::tuple<Key, PID>>::iterator InnerIterator;
+        typedef typename std::vector<KeyPid<Key, Data>>::iterator InnerIterator;
 
         static InnerNode<Key, Data> *CreateInnerNodeFromUnsorted(InnerIterator begin, InnerIterator end, const PID &prev, const PID &next, bool infinityElement) {
             // construct a new node
             auto newNode = InnerNode<Key, Data>::create(std::distance(begin, end), prev, next);
-            std::sort(begin, end, [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
-                return std::get<0>(t1) < std::get<0>(t2);
+            std::sort(begin, end, [](const KeyPid<Key, Data> &t1, const KeyPid<Key, Data> &t2) {
+                return t1.key < t2.key;
             });
             int i = 0;
             for (auto it = begin; it != end; ++it) {
                 newNode->nodes[i++] = *it;
             }
             if (infinityElement) {
-                std::get<0>(newNode->nodes[newNode->nodeCount - 1]) = std::numeric_limits<Key>::max();
+                newNode->nodes[newNode->nodeCount - 1].key = std::numeric_limits<Key>::max();
             }
             return newNode;
         }
 
-        typedef typename std::vector<std::tuple<Key, const Data *>>::iterator LeafIterator;
+        typedef typename std::vector<KeyValue<Key, Data>>::iterator LeafIterator;
 
-        static Leaf<Key, Data> *CreateLeafNodeFromUnsorted(LeafIterator begin, LeafIterator end, const PID &prev, const PID &next) {
+        static Leaf<Key, Data> *CreateLeafNodeFromSorted(LeafIterator begin, LeafIterator end, const PID &prev,
+                                                         const PID &next) {
             // construct a new node
             auto newNode = Leaf<Key, Data>::create(std::distance(begin, end), prev, next);
             int i = 0;

@@ -38,7 +38,7 @@ namespace BwTree {
             i = first;
             step = count / 2;
             i += step;
-            if (std::get<0>(array[i]) < key) {
+            if (array[i].key < key) {
                 first = ++i;
                 count -= step + 1;
             } else {
@@ -109,7 +109,7 @@ namespace BwTree {
                             level++;
                             parent = nextPID;
                             doNotSplit = false;
-                            nextPID = std::get<1>(node1->nodes[res]);
+                            nextPID = node1->nodes[res].pid;
                         }
                         nextNode = nullptr;
                         continue;
@@ -150,7 +150,7 @@ namespace BwTree {
                 ++pageDepth;
                 assert(pageDepth < 10000);
                 if (needConsolidatePage == NotExistantPID && pageDepth == settings.getConsolidateLimitLeaf()) {
-                    //TODO save for later
+                    //TODO save for later asynchrounous consolidate
                     needConsolidatePage = nextPID;
                 }
                 switch (nextNode->getType()) {
@@ -162,22 +162,25 @@ namespace BwTree {
                             needSplitPageParent = parent;
                         }
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
-                        if (node1->recordCount > res && std::get<0>(node1->records[res]) == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->records[res]), needConsolidatePage, needSplitPage, needSplitPageParent);
-                        } else {
-                            if (res == node1->recordCount && node1->next != NotExistantPID) {
-                                doNotSplit = true;
-                                nextPID = node1->next;
-                                nextNode = nullptr;
-                                continue;
+                        if (res < node1->recordCount) {
+                            if (node1->records[res].key == key) {
+                                return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key,
+                                                                     node1->records[res].data,
+                                                                     needConsolidatePage, needSplitPage,
+                                                                     needSplitPageParent);
                             }
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, needConsolidatePage, needSplitPage, needSplitPageParent);
+                        } else if (node1->next != NotExistantPID) {
+                            doNotSplit = true;
+                            nextPID = node1->next;
+                            nextNode = nullptr;
+                            continue;
                         }
+                        return FindDataPageResult<Key, Data>(nextPID, startNode, nullptr, needConsolidatePage, needSplitPage, needSplitPageParent);
                     };
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
-                        if (std::get<0>(node1->record) == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, std::get<1>(node1->record), needConsolidatePage, needSplitPage, needSplitPageParent);
+                        if (node1->record.key == key) {
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, node1->record.data, needConsolidatePage, needSplitPage, needSplitPageParent);
                         }
                         deltaNodeCount++;
                         nextNode = node1->origin;
@@ -282,7 +285,7 @@ namespace BwTree {
             consolidateLeafPage(res.pid, res.startNode);
             goto restartInsert;
         }
-        DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, std::make_tuple(key, record), (res.dataNode != nullptr));
+        DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, KeyValue<Key, Data>(key, record), (res.dataNode != nullptr));
         if (!mapping[res.pid].compare_exchange_weak(res.startNode, newNode)) {
             ++atomicCollisions;
             freeNodeSingle<Key, Data>(newNode);
@@ -326,8 +329,8 @@ namespace BwTree {
         LinkedNode<Key, Data> *newRightNode;
         std::size_t removedElements;
         if (!leaf) {
-            static thread_local std::vector<std::tuple<Key, PID>> nodesStatic;
-            std::vector<std::tuple<Key, PID>> &nodes = nodesStatic;
+            static thread_local std::vector<KeyPid<Key, Data>> nodesStatic;
+            auto &nodes = nodesStatic;
             nodes.clear();
             PID prev, next;
             bool hadInfinityElement;
@@ -338,20 +341,20 @@ namespace BwTree {
             if (DEBUG) std::cout << "inner size: " << nodes.size() << std::endl;
             auto middle = nodes.begin();
             std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2) - 1);
-            std::nth_element(nodes.begin(), middle, nodes.end(), [](const std::tuple<Key, PID> &t1, const std::tuple<Key, PID> &t2) {
-                return std::get<0>(t1) < std::get<0>(t2);
+            std::nth_element(nodes.begin(), middle, nodes.end(), [](const KeyPid<Key, Data> &t1, const KeyPid<Key, Data> &t2) {
+                return t1.key < t2.key;
             });
 
-            Kp = std::get<0>(*middle);
+            Kp = middle->key;
 
             auto newRightInner = Helper<Key, Data>::CreateInnerNodeFromUnsorted(middle + 1, nodes.end(), needSplitPage, next, hadInfinityElement);
             assert(newRightInner->nodeCount > 0);
-            Kq = std::get<0>(newRightInner->nodes[newRightInner->nodeCount - 1]);
+            Kq = newRightInner->nodes[newRightInner->nodeCount - 1].key;
             removedElements = newRightInner->nodeCount;
             newRightNode = newRightInner;
         } else {
-            static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
-            std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
+            static thread_local std::vector<KeyValue<Key, Data>> recordsStatic;
+            auto &records = recordsStatic;
             records.clear();
             PID prev, next;
             std::tie(prev, next) = getConsolidatedLeafData(startNode, records);
@@ -361,11 +364,12 @@ namespace BwTree {
             }
             auto middle = records.begin();
             std::advance(middle, (std::distance(records.begin(), records.end()) / 2) - 1);
-            Kp = std::get<0>(*middle);
+            Kp = middle->key;
 
-            auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromUnsorted(middle + 1, records.end(), needSplitPage, next);
+            auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromSorted(middle + 1, records.end(), needSplitPage,
+                                                                            next);
             assert(newRightLeaf->recordCount > 0);
-            Kq = std::get<0>(newRightLeaf->records[newRightLeaf->recordCount - 1]);
+            Kq = newRightLeaf->records[newRightLeaf->recordCount - 1].key;
             removedElements = newRightLeaf->recordCount;
             newRightNode = newRightLeaf;
         }
@@ -388,10 +392,8 @@ namespace BwTree {
 
         if (needSplitPageParent == NotExistantPID) {
             InnerNode<Key, Data> *newRoot = InnerNode<Key, Data>::create(2, NotExistantPID, NotExistantPID);
-            std::get<0>(newRoot->nodes[0]) = Kp;
-            std::get<1>(newRoot->nodes[0]) = needSplitPage;
-            std::get<0>(newRoot->nodes[1]) = std::numeric_limits<Key>::max();
-            std::get<1>(newRoot->nodes[1]) = newRightNodePID;
+            newRoot->nodes[0] = KeyPid<Key, Data>(Kp, needSplitPage);
+            newRoot->nodes[1] = KeyPid<Key, Data>(std::numeric_limits<Key>::max(), newRightNodePID);
             PID newRootPid = newNode(newRoot);
             PID curRoot = needSplitPage;
             if (root.compare_exchange_strong(curRoot, newRootPid)) {
@@ -425,12 +427,13 @@ namespace BwTree {
     void Tree<Key, Data>::consolidateLeafPage(const PID pid, Node<Key, Data> *startNode) {
         if (DEBUG) std::cout << "consolidate leaf page" << std::endl;
 
-        static thread_local std::vector<std::tuple<Key, const Data *>> recordsStatic;
-        std::vector<std::tuple<Key, const Data *>> &records = recordsStatic;
+        static thread_local std::vector<KeyValue<Key, Data>> recordsStatic;
+        auto &records = recordsStatic;
         records.clear();
         PID prev, next;
         std::tie(prev, next) = getConsolidatedLeafData(startNode, records);
-        Leaf<Key, Data> *newNode = Helper<Key, Data>::CreateLeafNodeFromUnsorted(records.begin(), records.end(), prev, next);
+        Leaf<Key, Data> *newNode = Helper<Key, Data>::CreateLeafNodeFromSorted(records.begin(), records.end(), prev,
+                                                                               next);
 
         Node<Key, Data> *previousNode = startNode;
 
@@ -445,11 +448,13 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    std::tuple<PID, PID> Tree<Key, Data>::getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &records) {
-        std::array<std::tuple<Key, const Data *>, 100> deltaInsertRecords;
-        std::array<Key, 100> consideredKeys;
-        std::size_t deltaInsertRecordsNext = 0;
-        std::size_t consideredKeysNext = 0;
+    std::tuple<PID, PID> Tree<Key, Data>::getConsolidatedLeafData(Node<Key, Data> *node, std::vector<KeyValue<Key, Data>> &records) {
+        std::array<KeyValue<Key, Data>, 100> deltaInsertRecords;
+        std::size_t deltaInsertRecordsCount = 0;
+
+        std::array<Key, 100> deletedOrUpdatedDeltaKeys;
+        std::size_t deletedOrUpdatedDeltaKeysCount = 0;
+
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
@@ -457,14 +462,16 @@ namespace BwTree {
             switch (node->getType()) {
                 case PageType::deltaInsert: {
                     auto node1 = static_cast<DeltaInsert<Key, Data> *>(node);
-                    auto &curKey = std::get<0>(node1->record);
+                    auto &curKey = node1->record.key;
                     if (curKey <= stopAtKey
-                            && std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, curKey) == consideredKeys.begin() + consideredKeysNext) {
-                        deltaInsertRecords[deltaInsertRecordsNext++] = node1->record;
-                        assert(deltaInsertRecordsNext != deltaInsertRecords.size());
+                            && std::find(deletedOrUpdatedDeltaKeys.begin(), deletedOrUpdatedDeltaKeys.begin() +
+                                                                      deletedOrUpdatedDeltaKeysCount, curKey) == deletedOrUpdatedDeltaKeys.begin() +
+                                                                                                                 deletedOrUpdatedDeltaKeysCount) {
+                        deltaInsertRecords[deltaInsertRecordsCount++] = node1->record;
+                        assert(deltaInsertRecordsCount != deltaInsertRecords.size());
                         if (node1->keyExistedBefore) {
-                            consideredKeys[consideredKeysNext++] = curKey;
-                            assert(consideredKeysNext != consideredKeys.size());
+                            deletedOrUpdatedDeltaKeys[deletedOrUpdatedDeltaKeysCount++] = curKey;
+                            assert(deletedOrUpdatedDeltaKeysCount != deletedOrUpdatedDeltaKeys.size());
                         }
                     }
                     node = node1->origin;
@@ -473,9 +480,11 @@ namespace BwTree {
                 case PageType::deltaDelete: {
                     auto node1 = static_cast<DeltaDelete<Key, Data> *>(node);
                     auto &curKey = node1->key;
-                    if (std::find(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext, curKey) == consideredKeys.begin() + consideredKeysNext) {
-                        consideredKeys[consideredKeysNext++] = curKey;
-                        assert(consideredKeysNext != consideredKeys.size());
+                    if (std::find(deletedOrUpdatedDeltaKeys.begin(), deletedOrUpdatedDeltaKeys.begin() +
+                                                               deletedOrUpdatedDeltaKeysCount, curKey) == deletedOrUpdatedDeltaKeys.begin() +
+                                                                                                          deletedOrUpdatedDeltaKeysCount) {
+                        deletedOrUpdatedDeltaKeys[deletedOrUpdatedDeltaKeysCount++] = curKey;
+                        assert(deletedOrUpdatedDeltaKeysCount != deletedOrUpdatedDeltaKeys.size());
                     }
                     node = node1->origin;
                     continue;
@@ -497,46 +506,46 @@ namespace BwTree {
         }
         //case PageType::leaf:
         const auto node1 = static_cast<Leaf<Key, Data> *>(node);
-        std::sort(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsNext, [](const std::tuple<Key, const Data *> &t1, const std::tuple<Key, const Data *> &t2) {
-            return std::get<0>(t1) < std::get<0>(t2);
+        std::sort(deltaInsertRecords.begin(), deltaInsertRecords.begin() + deltaInsertRecordsCount, [](const KeyValue<Key, Data> &t1, const KeyValue<Key, Data> &t2) {
+            return t1.key < t2.key;
         });
-        std::sort(consideredKeys.begin(), consideredKeys.begin() + consideredKeysNext);
-        std::tuple<Key, const Data *> *recordsdata[] = {const_cast<std::tuple<Key, const Data *> *>(deltaInsertRecords.data()), node1->records};
-        std::size_t nextconsidered = 0;
+        std::sort(deletedOrUpdatedDeltaKeys.begin(), deletedOrUpdatedDeltaKeys.begin() + deletedOrUpdatedDeltaKeysCount);
+        KeyValue<Key, Data> *recordsdata[] = {const_cast<KeyValue<Key, Data> *>(deltaInsertRecords.data()), node1->records};
+        std::size_t nextConsideredDeltaKey = 0;
         std::size_t nextrecords[] = {0, 0};
-        std::size_t &nextrecord = nextrecords[1];
         std::size_t &nextdelta = nextrecords[0];
-        while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsNext) {
-            nextconsidered += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]);
-            if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) > consideredKeys[nextconsidered]) {
+        std::size_t &nextrecord = nextrecords[1];
+        while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsCount) {
+            nextConsideredDeltaKey += (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key > deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]);
+            if (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key > deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]) {
                 continue;
             }
-            nextrecord += (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]);
-            if (nextconsidered < consideredKeysNext && std::get<0>(node1->records[nextrecord]) == consideredKeys[nextconsidered]) {
+            nextrecord += (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key == deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]);
+            if (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key == deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]) {
                 continue;
             }
 
-            std::int8_t choice = (std::get<0>(node1->records[nextrecord]) < std::get<0>(deltaInsertRecords[nextdelta]));
-            std::tuple<Key, const Data *> record = recordsdata[choice][nextrecords[choice]];
+            std::int8_t choice = (node1->records[nextrecord].key < deltaInsertRecords[nextdelta].key);
+            KeyValue<Key, Data> record = recordsdata[choice][nextrecords[choice]];
             ++nextrecords[choice];
-            if (std::get<0>(record) <= stopAtKey) {
+            if (record.key <= stopAtKey) {
                 records.push_back(record);
             } else {
                 nextrecord = node1->recordCount;
-                nextdelta = deltaInsertRecordsNext;
+                nextdelta = deltaInsertRecordsCount;
                 break;
             }
         }
         while (nextrecord < node1->recordCount) {
-            if (std::get<0>(node1->records[nextrecord]) <= stopAtKey) {
+            if (node1->records[nextrecord].key <= stopAtKey) {
                 records.push_back(node1->records[nextrecord]);
                 ++nextrecord;
             } else {
                 break;
             }
         }
-        while (nextdelta < deltaInsertRecordsNext) {
-            if (std::get<0>(deltaInsertRecords[nextdelta]) <= stopAtKey) {
+        while (nextdelta < deltaInsertRecordsCount) {
+            if (deltaInsertRecords[nextdelta].key <= stopAtKey) {
                 records.push_back(deltaInsertRecords[nextdelta]);
                 ++nextdelta;
             } else {
@@ -554,9 +563,10 @@ namespace BwTree {
     void Tree<Key, Data>::consolidateInnerPage(const PID pid, Node<Key, Data> *startNode) {
         if (DEBUG) std::cout << "consolidate inner page" << std::endl;
 
-        static thread_local std::vector<std::tuple<Key, PID>> nodesStatic;
-        std::vector<std::tuple<Key, PID>> &nodes = nodesStatic;
+        static thread_local std::vector<KeyPid<Key, Data>> nodesStatic;
+        auto &nodes = nodesStatic;
         nodes.clear();
+
         PID prev, next;
         bool hadInfinityElement;
         std::tie(prev, next, hadInfinityElement) = getConsolidatedInnerData(startNode, pid, nodes);
@@ -575,10 +585,9 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<std::tuple<Key, PID>> &nodes) {
+    std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<KeyPid<Key, Data>> &nodes) {
         std::array<PID, 40> consideredPIDs;
-        consideredPIDs.fill(NotExistantPID);
-        std::size_t consideredPIDsNextIndex = 0;
+        std::size_t consideredPIDsCount = 0;
 
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
@@ -589,15 +598,13 @@ namespace BwTree {
                 case PageType::inner: {
                     auto node1 = static_cast<InnerNode<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->nodeCount; ++i) {
-                        auto &curKey = std::get<0>(node1->nodes[i]);
-                        if (curKey <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsNextIndex, std::get<1>(node1->nodes[i])) == consideredPIDs.begin() + consideredPIDsNextIndex) {
-                            if (std::get<1>(node1->nodes[i]) == pid) {
-                                assert(false);
-                            }
+                        if (node1->nodes[i].key <= stopAtKey &&
+                                std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->nodes[i].pid) == consideredPIDs.begin() + consideredPIDsCount) {
+                            assert(node1->nodes[i].pid != pid);
                             nodes.push_back(node1->nodes[i]);
                         }
                     }
-                    if (!pageSplit && std::get<0>(node1->nodes[node1->nodeCount - 1]) == NotExistantPID) {
+                    if (!pageSplit && node1->nodes[node1->nodeCount - 1].key == NotExistantPID) {
                         hadInfinityElement = true;
                     }
                     prev = node1->prev;
@@ -610,21 +617,23 @@ namespace BwTree {
                 case PageType::deltaIndex: {
                     auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
                     if (node1->keyRight <= stopAtKey) {
-                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsNextIndex, node1->oldChild) == consideredPIDs.begin() + consideredPIDsNextIndex) {
+                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->oldChild) == consideredPIDs.begin() +
+                                                                                                                                consideredPIDsCount) {
                             if (node1->oldChild == pid) {
                                 assert(false);
                             }
-                            nodes.push_back(std::make_tuple(node1->keyLeft, node1->oldChild));
-                            consideredPIDs[consideredPIDsNextIndex++] = node1->oldChild;
-                            assert(consideredPIDsNextIndex != consideredPIDs.size());
+                            nodes.push_back(KeyPid<Key, Data>(node1->keyLeft, node1->oldChild));
+                            consideredPIDs[consideredPIDsCount++] = node1->oldChild;
+                            assert(consideredPIDsCount != consideredPIDs.size());
                         }
-                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsNextIndex, node1->child) == consideredPIDs.begin() + consideredPIDsNextIndex) {
+                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->child) == consideredPIDs.begin() +
+                                                                                                                             consideredPIDsCount) {
                             if (node1->child == pid) {
                                 assert(false);
                             }
-                            nodes.push_back(std::make_tuple(node1->keyRight, node1->child));
-                            consideredPIDs[consideredPIDsNextIndex++] = node1->child;
-                            assert(consideredPIDsNextIndex != consideredPIDs.size());
+                            nodes.push_back(KeyPid<Key, Data>(node1->keyRight, node1->child));
+                            consideredPIDs[consideredPIDsCount++] = node1->child;
+                            assert(consideredPIDsCount != consideredPIDs.size());
                         }
                     }
                     node = node1->origin;

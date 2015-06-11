@@ -146,11 +146,11 @@ namespace BwTree {
 
         void consolidateInnerPage(PID pid, Node<Key, Data> *startNode);
 
-        std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<std::tuple<Key, PID>> &returnNodes);
+        std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<KeyPid<Key, Data>> &returnNodes);
 
         void consolidateLeafPage(PID pid, Node<Key, Data> *startNode);
 
-        std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<std::tuple<Key, const Data *>> &returnNodes);
+        std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<KeyValue<Key, Data>> &returnNodes);
 
         void splitPage(const PID needSplitPage, const PID needSplitPageParent);
 
@@ -184,7 +184,7 @@ namespace BwTree {
             Node<Key, Data> *datanode = Leaf<Key, Data>::create(0, NotExistantPID, NotExistantPID);
             PID dataNodePID = newNode(datanode);
             InnerNode<Key, Data> *innerNode = InnerNode<Key, Data>::create(1, NotExistantPID, NotExistantPID);
-            innerNode->nodes[0] = std::make_tuple(std::numeric_limits<Key>::max(), dataNodePID);
+            innerNode->nodes[0] = KeyPid<Key, Data>(std::numeric_limits<Key>::max(), dataNodePID);
             root.store(newNode(innerNode));
         }
 
