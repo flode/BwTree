@@ -516,12 +516,17 @@ namespace BwTree {
         std::size_t &nextdelta = nextrecords[0];
         std::size_t &nextrecord = nextrecords[1];
         while (nextrecord < node1->recordCount && nextdelta < deltaInsertRecordsCount) {
-            nextConsideredDeltaKey += (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key > deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]);
-            if (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key > deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]) {
+            const bool hasMoreDeltaKeys = nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount;
+            const bool advanceDeletedOrUpdatedDeltaKeys =
+                    hasMoreDeltaKeys && node1->records[nextrecord].key > deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey];
+            if (advanceDeletedOrUpdatedDeltaKeys) {
+                nextConsideredDeltaKey++;
                 continue;
             }
-            nextrecord += (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key == deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]);
-            if (nextConsideredDeltaKey < deletedOrUpdatedDeltaKeysCount && node1->records[nextrecord].key == deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey]) {
+            bool recordUpdatedOrDeleted =
+                    hasMoreDeltaKeys && node1->records[nextrecord].key == deletedOrUpdatedDeltaKeys[nextConsideredDeltaKey];
+            if (recordUpdatedOrDeleted) {
+                nextrecord++;
                 continue;
             }
 
