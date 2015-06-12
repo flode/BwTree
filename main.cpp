@@ -46,7 +46,7 @@ void testBwTree() {
             initial_values[i] = val;
         }
     }
-    std::vector<std::size_t> numberValuesChoice{{42000000}};//;, 20000000, 30000000, 50000000}};//1000, 10000, 100000,1000000,10000000}};
+    std::vector<std::size_t> numberValuesChoice{{1000000,10000000, 42000000}};
     for (auto &numberValues : numberValuesChoice) {
         for (int numberOfThreads = 1; numberOfThreads <= 8; ++numberOfThreads) {
             std::uniform_int_distribution<Key> rand(1, numberValues * 2);
@@ -130,7 +130,7 @@ void testBwTree() {
                     std::cout << numberOfThreads << "," << operations << "," << percentRead << "," << settings.getName() << ",";
 
                     std::cout << duration.count() << ", ";
-                    std::cout << (operations / duration.count() * 1000) << ", ";
+                    std::cout << (duration.count() > 0 ? (operations / duration.count() * 1000) : 0) << ", ";
 
                     std::cout << tree.getAtomicCollisions() << ",";
                     std::cout << tree.getSuccessfulLeafConsolidate() << ",";
