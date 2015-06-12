@@ -335,12 +335,13 @@ namespace BwTree {
             PID prev, next;
             bool hadInfinityElement;
             std::tie(prev, next, hadInfinityElement) = getConsolidatedInnerData(startNode, needSplitPage, nodes);
+
             if (nodes.size() < settings.getSplitLimitInner(0)) {
                 return;
             }
             if (DEBUG) std::cout << "inner size: " << nodes.size() << std::endl;
             auto middle = nodes.begin();
-            std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2) - 1);
+            std::advance(middle, (std::distance(nodes.begin(), nodes.end()) / 2));
             std::nth_element(nodes.begin(), middle, nodes.end(), [](const KeyPid<Key, Data> &t1, const KeyPid<Key, Data> &t2) {
                 return t1.key < t2.key;
             });
@@ -363,7 +364,7 @@ namespace BwTree {
                 return;
             }
             auto middle = records.begin();
-            std::advance(middle, (std::distance(records.begin(), records.end()) / 2) - 1);
+            std::advance(middle, (std::distance(records.begin(), records.end()) / 2));
             Kp = middle->key;
 
             auto newRightLeaf = Helper<Key, Data>::CreateLeafNodeFromSorted(middle + 1, records.end(), needSplitPage,
@@ -621,25 +622,23 @@ namespace BwTree {
                 }
                 case PageType::deltaIndex: {
                     auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
-                    if (node1->keyRight <= stopAtKey) {
-                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->oldChild) == consideredPIDs.begin() +
-                                                                                                                                consideredPIDsCount) {
-                            if (node1->oldChild == pid) {
-                                assert(false);
-                            }
-                            nodes.push_back(KeyPid<Key, Data>(node1->keyLeft, node1->oldChild));
-                            consideredPIDs[consideredPIDsCount++] = node1->oldChild;
-                            assert(consideredPIDsCount != consideredPIDs.size());
+                    if (node1->keyLeft <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->oldChild) == consideredPIDs.begin() +
+                                                                                                                            consideredPIDsCount) {
+                        if (node1->oldChild == pid) {
+                            assert(false);
                         }
-                        if (std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->child) == consideredPIDs.begin() +
-                                                                                                                             consideredPIDsCount) {
-                            if (node1->child == pid) {
-                                assert(false);
-                            }
-                            nodes.push_back(KeyPid<Key, Data>(node1->keyRight, node1->child));
-                            consideredPIDs[consideredPIDsCount++] = node1->child;
-                            assert(consideredPIDsCount != consideredPIDs.size());
+                        nodes.push_back(KeyPid<Key, Data>(node1->keyLeft, node1->oldChild));
+                        consideredPIDs[consideredPIDsCount++] = node1->oldChild;
+                        assert(consideredPIDsCount != consideredPIDs.size());
+                    }
+                    if (node1->keyRight <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->child) == consideredPIDs.begin() +
+                                                                                                                         consideredPIDsCount) {
+                        if (node1->child == pid) {
+                            assert(false);
                         }
+                        nodes.push_back(KeyPid<Key, Data>(node1->keyRight, node1->child));
+                        consideredPIDs[consideredPIDsCount++] = node1->child;
+                        assert(consideredPIDsCount != consideredPIDs.size());
                     }
                     node = node1->origin;
                     continue;
