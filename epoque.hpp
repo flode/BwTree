@@ -5,6 +5,11 @@
 #include "nodes.hpp"
 
 namespace BwTree {
+
+    static thread_local std::size_t lastEpoque = std::numeric_limits<std::size_t>::max();
+    static thread_local std::size_t lastEpoqueCount{0};
+
+
     template<typename Key, typename Data>
     class Epoque {
         static constexpr std::size_t epoquescount{40000};
@@ -20,6 +25,9 @@ namespace BwTree {
         Epoque() {
             epoques[newestEpoque].store(0);
             deleteNodeNext[newestEpoque].store(0);
+
+            lastEpoque = std::numeric_limits<std::size_t>::max();
+            lastEpoqueCount = 0;
         }
 
         ~Epoque() {
@@ -37,9 +45,6 @@ namespace BwTree {
 
         void markForDeletion(Node<Key, Data> *);
     };
-
-    static thread_local std::size_t lastEpoque = std::numeric_limits<std::size_t>::max();
-    static thread_local std::size_t lastEpoqueCount{0};
 
     template<typename Key, typename Data>
     class EnterEpoque {
