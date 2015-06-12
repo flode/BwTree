@@ -18,11 +18,16 @@ void testBwTreeNew(const std::size_t count) {
         values.at(i) = i;
         tree.insert(values.at(i), &values.at(i));
     }
+    tree.deleteKey(values.at(0));
+    tree.deleteKey(values.at(1));
+    tree.deleteKey(values.at(2));
+    tree.deleteKey(values.at(3));
+    tree.deleteKey(values.at(4));
+    tree.deleteKey(values.at(70));
     for (std::size_t i = 0; i < count; ++i) {
         auto *val = tree.search(values.at(i));
         if (val == nullptr || *val != values.at(i)) {
             std::cout << "error val " << (val == nullptr ? -1 : *val) << " expected " << values.at(i) << std::endl;
-            exit(1);
         }
     }
 }

@@ -542,13 +542,13 @@ namespace BwTree {
                 break;
             }
         }
-        while (nextrecord < node1->recordCount) {
-            if (node1->records[nextrecord].key <= stopAtKey) {
+        while (nextrecord < node1->recordCount && node1->records[nextrecord].key <= stopAtKey) {
+            if (std::find(deletedOrUpdatedDeltaKeys.begin(),
+                          deletedOrUpdatedDeltaKeys.begin() + deletedOrUpdatedDeltaKeysCount, node1->records[nextrecord].key) ==
+                    deletedOrUpdatedDeltaKeys.begin() + deletedOrUpdatedDeltaKeysCount) {
                 records.push_back(node1->records[nextrecord]);
-                ++nextrecord;
-            } else {
-                break;
             }
+            ++nextrecord;
         }
         while (nextdelta < deltaInsertRecordsCount) {
             if (deltaInsertRecords[nextdelta].key <= stopAtKey) {
