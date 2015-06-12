@@ -1,13 +1,10 @@
 # BwTree
-This Implementation of the BwTree is available under the GNU GENERAL PUBLIC LICENSE
 
-It was developed at the TU Munich as a student project at the Chair for database systems.
+This demo implementation of a BwTree was developed as a student project at the Chair for database systems at the TU Munich.
 
-The BwTree is a lock free in-memory B+ Tree.
+The BwTree is a lock free in-memory B+ Tree, the principles have been described by Microsoft Research:
 
-The principles have been described by Microsoft Research:
-
-The Bw-Tree: A B-tree for New Hardware Platforms: http://research.microsoft.com/pubs/178758/bw-tree-icde2013-final.pdf
+"The Bw-Tree: A B-tree for New Hardware Platforms": http://research.microsoft.com/pubs/178758/bw-tree-icde2013-final.pdf
 
 
 ## Build instructions
@@ -31,3 +28,7 @@ By executing with tcmalloc performance can be improved.
 - The mapping table cannot grow dynamically
 
 
+## License
+Copyright 2014-2015 Florian Scheibner
+
+This Implementation of the BwTree is available under the GNU GENERAL PUBLIC LICENSE v3
