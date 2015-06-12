@@ -10,6 +10,24 @@
 using namespace BwTree;
 
 template<typename Key>
+void testBwTreeNew(const std::size_t count) {
+    auto settings = BwTree::Settings("8,8,3,3", 8, {{8}}, 3, {{3}});
+    Tree<Key, Key> tree(settings);
+    std::vector<Key> values(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        values.at(i) = i;
+        tree.insert(values.at(i), &values.at(i));
+    }
+    for (std::size_t i = 0; i < count; ++i) {
+        auto *val = tree.search(values.at(i));
+        if (val == nullptr || *val != values.at(i)) {
+            std::cout << "error val " << (val == nullptr ? -1 : *val) << " expected " << values.at(i) << std::endl;
+            exit(1);
+        }
+    }
+}
+
+template<typename Key>
 void testBwTree() {
     std::cout << "threads, operations,percent read operations, settings split leaf, settings split inner, settings delta, settings delta inner, time in ms, operations per s, exchange collisions, successful leaf consolidation, failed leaf consolidation, successful leaf split, failed leaf split,"
             "successful inner consolidation, failed inner consolidation, successful inner split, failed innersplit" << std::endl;
@@ -197,6 +215,12 @@ void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<Key, Key>
 }
 
 int main() {
+//    testBwTreeNew<unsigned long long>(293);
+//    for (std::size_t i = 20; i < 300; ++i) {
+//        std::cout << i << std::endl;
+//        testBwTreeNew<unsigned long long>(i);
+//    }
+//    return EXIT_SUCCESS;
     testBwTree<unsigned long long>();
-    return 0;
+    return EXIT_SUCCESS;
 }
