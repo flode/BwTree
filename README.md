@@ -26,6 +26,7 @@ By executing with tcmalloc performance can be improved.
 - Merging underful pages is not implemented.
 - The epoque system uses locks to keep track of pages that can be deleted
 - The mapping table cannot grow dynamically
+- Necessary operations like consolidate or split are not executed asynchronously
 
 
 ## License
