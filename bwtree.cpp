@@ -611,11 +611,11 @@ namespace BwTree {
         }
     }
 
+    thread_local std::vector<PID> consideredPIDsConsolidateInner;
+
     template<typename Key, typename Data>
     std::tuple<PID, PID, bool> Tree<Key, Data>::getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<KeyPid<Key, Data>> &nodes) {
-        std::array<PID, 40> consideredPIDs;
-        std::size_t consideredPIDsCount = 0;
-
+        consideredPIDsConsolidateInner.clear();
         Key stopAtKey = std::numeric_limits<Key>::max();
         bool pageSplit = false;
         PID prev, next;
@@ -626,7 +626,7 @@ namespace BwTree {
                     auto node1 = static_cast<InnerNode<Key, Data> *>(node);
                     for (std::size_t i = 0; i < node1->nodeCount; ++i) {
                         if (node1->nodes[i].key <= stopAtKey &&
-                                std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->nodes[i].pid) == consideredPIDs.begin() + consideredPIDsCount) {
+                                std::find(consideredPIDsConsolidateInner.begin(), consideredPIDsConsolidateInner.end(), node1->nodes[i].pid) == consideredPIDsConsolidateInner.end()) {
                             assert(node1->nodes[i].pid != pid);
                             nodes.push_back(node1->nodes[i]);
                         }
@@ -643,23 +643,19 @@ namespace BwTree {
                 }
                 case PageType::deltaIndex: {
                     auto node1 = static_cast<DeltaIndex<Key, Data> *>(node);
-                    if (node1->keyLeft <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->oldChild) == consideredPIDs.begin() +
-                                                                                                                            consideredPIDsCount) {
+                    if (node1->keyLeft <= stopAtKey && std::find(consideredPIDsConsolidateInner.begin(), consideredPIDsConsolidateInner.end(), node1->oldChild) == consideredPIDsConsolidateInner.end()) {
                         if (node1->oldChild == pid) {
                             assert(false);
                         }
                         nodes.push_back(KeyPid<Key, Data>(node1->keyLeft, node1->oldChild));
-                        consideredPIDs[consideredPIDsCount++] = node1->oldChild;
-                        assert(consideredPIDsCount != consideredPIDs.size());
+                        consideredPIDsConsolidateInner.push_back(node1->oldChild);
                     }
-                    if (node1->keyRight <= stopAtKey && std::find(consideredPIDs.begin(), consideredPIDs.begin() + consideredPIDsCount, node1->child) == consideredPIDs.begin() +
-                                                                                                                         consideredPIDsCount) {
+                    if (node1->keyRight <= stopAtKey && std::find(consideredPIDsConsolidateInner.begin(), consideredPIDsConsolidateInner.end(), node1->child) == consideredPIDsConsolidateInner.end()) {
                         if (node1->child == pid) {
                             assert(false);
                         }
                         nodes.push_back(KeyPid<Key, Data>(node1->keyRight, node1->child));
-                        consideredPIDs[consideredPIDsCount++] = node1->child;
-                        assert(consideredPIDsCount != consideredPIDs.size());
+                        consideredPIDsConsolidateInner.push_back(node1->child);
                     }
                     node = node1->origin;
                     continue;
