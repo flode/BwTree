@@ -1,12 +1,31 @@
-#ifndef BWTREE_CPP
-#define BWTREE_CPP
-
 #include <unordered_map>
-#include "bwtree.hpp"
 #include <cassert>
 #include <unordered_set>
+#include "bwtree.hpp"
 
 namespace BwTree {
+
+    template<typename Key, typename Data>
+    FindDataPageResult<Key, Data>::FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
+            : pid(pid),
+              startNode(startNode),
+              dataNode(dataNode),
+              needConsolidatePage(needConsolidatePage),
+              needSplitPage(needSplitPage),
+              needSplitPageParent(needSplitPageParent) {
+    }
+
+    template<typename Key, typename Data>
+    FindDataPageResult<Key, Data>::FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Key const key, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
+            : pid(pid),
+              startNode(startNode),
+              dataNode(dataNode),
+              key(key),
+              data(data),
+              needConsolidatePage(needConsolidatePage),
+              needSplitPage(needSplitPage),
+              needSplitPageParent(needSplitPageParent) {
+    }
 
     template<typename Key, typename Data>
     Data *Tree<Key, Data>::search(Key key) {
@@ -669,6 +688,9 @@ namespace BwTree {
             freeNodeRecursively<Key, Data>(node);
         }
     }
-}
 
-#endif
+    template class Tree<uint32_t, uint32_t>;
+    template class Tree<uint32_t, uint64_t>;
+    template class Tree<uint64_t, uint64_t>;
+    template class Tree<unsigned long long, unsigned long long>;
+}

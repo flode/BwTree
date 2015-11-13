@@ -10,7 +10,6 @@
 #include <stack>
 #include <assert.h>
 #include <sys/wait.h>
-
 #include "nodes.hpp"
 #include "epoque.hpp"
 
@@ -28,26 +27,9 @@ namespace BwTree {
         const PID needSplitPageParent;
 
 
-        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
-                : pid(pid),
-                  startNode(startNode),
-                  dataNode(dataNode),
-                  needConsolidatePage(needConsolidatePage),
-                  needSplitPage(needSplitPage),
-                  needSplitPageParent(needSplitPageParent) {
-        }
+        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent);
 
-
-        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Key const key, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
-                : pid(pid),
-                  startNode(startNode),
-                  dataNode(dataNode),
-                  key(key),
-                  data(data),
-                  needConsolidatePage(needConsolidatePage),
-                  needSplitPage(needSplitPage),
-                  needSplitPageParent(needSplitPageParent) {
-        }
+        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Key const key, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent);
     };
 
 
@@ -239,8 +221,4 @@ namespace BwTree {
         }
     };
 }
-
-// Include the cpp file so that the templates can be correctly compiled
-#include "bwtree.cpp"
-
 #endif

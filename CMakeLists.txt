@@ -9,11 +9,12 @@ else()
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -Werror -pthread -std=c++14")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Werror")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Werror -Wno-error=overflow")
 
 find_package (Threads)
-set(SOURCE_FILES bwtree.hpp bwtree.cpp epoque.hpp nodes.hpp)
+set(SOURCE_FILES bwtree.cpp epoque.hpp nodes.hpp)
 add_library(BwTreeLib ${SOURCE_FILES})
 target_link_libraries (BwTreeLib ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(BwTree main.cpp main.hpp)
+target_link_libraries(BwTree BwTreeLib)
