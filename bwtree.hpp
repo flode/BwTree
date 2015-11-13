@@ -1,8 +1,6 @@
 #ifndef BWTREE_H
 #define BWTREE_H
 
-#undef NDEBUG
-
 #include <tuple>
 #include <vector>
 #include <mutex>
