@@ -92,7 +92,7 @@ namespace BwTree {
         std::atomic<unsigned long> failedLeafSplit{0};
         std::atomic<unsigned long> failedInnerSplit{0};
 
-        Epoque<Key, Data> epoque;
+        Epoche<Key, Data> epoque{64};
 
         const Settings &settings;
 
@@ -115,20 +115,20 @@ namespace BwTree {
         */
         FindDataPageResult<Key, Data> findDataPage(Key key);
 
-        void consolidatePage(const PID pid) {
+        void consolidatePage(const PID pid, ThreadInfo<Key, Data> &threadInfo) {
             Node<Key, Data> *node = PIDToNodePtr(pid);
             if (isLeaf(node)) {
-                consolidateLeafPage(pid, node);
+                consolidateLeafPage(pid, node, threadInfo);
             } else {
-                consolidateInnerPage(pid, node);
+                consolidateInnerPage(pid, node, threadInfo);
             }
         }
 
-        void consolidateInnerPage(PID pid, Node<Key, Data> *startNode);
+        void consolidateInnerPage(PID pid, Node<Key, Data> *startNode, ThreadInfo<Key, Data> &threadInfo);
 
         std::tuple<PID, PID, bool> getConsolidatedInnerData(Node<Key, Data> *node, PID pid, std::vector<KeyPid<Key, Data>> &returnNodes);
 
-        void consolidateLeafPage(PID pid, Node<Key, Data> *startNode);
+        void consolidateLeafPage(PID pid, Node<Key, Data> *startNode, ThreadInfo<Key, Data> &threadInfo);
 
         std::tuple<PID, PID> getConsolidatedLeafData(Node<Key, Data> *node, std::vector<KeyValue<Key, Data>> &returnNodes);
 
@@ -170,17 +170,19 @@ namespace BwTree {
 
         ~Tree();
 
-        void insert(Key key, const Data *const record);
+        void insert(Key key, const Data *const record, ThreadInfo<Key, Data> &threadInfo);
 
-        void deleteKey(Key key);
+        void deleteKey(Key key, ThreadInfo<Key, Data> &threadInfo);
 
-        Data *search(Key key);
+        Data *search(Key key, ThreadInfo<Key, Data> &threadInfo);
+
+        ThreadInfo<Key, Data> getThreadInfo();
 
         /**
         * has to be called when no further work is to be done the next time so that the epoques can be freed.
         */
         void threadFinishedWithTree() {
-            EnterEpoque<Key, Data>::threadFinishedWithTree(epoque);
+            //TODO EnterEpoque<Key, Data>::threadFinishedWithTree(epoque);
         }
 
 
@@ -219,6 +221,7 @@ namespace BwTree {
         unsigned long getFailedInnerSplit() const {
             return failedInnerSplit;
         }
+
     };
 }
 #endif

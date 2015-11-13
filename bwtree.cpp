@@ -28,8 +28,8 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    Data *Tree<Key, Data>::search(Key key) {
-        EnterEpoque<Key, Data> epoqueGuard(epoque);
+    Data *Tree<Key, Data>::search(Key key, ThreadInfo<Key, Data> &threadInfo) {
+        EpocheGuard<Key, Data> epoqueGuard(threadInfo);
         FindDataPageResult<Key, Data> res = findDataPage(key);
         Data *returnValue;
         if (res.dataNode == nullptr) {
@@ -40,7 +40,7 @@ namespace BwTree {
         if (res.needSplitPage != NotExistantPID) {
             splitPage(res.needSplitPage, res.needSplitPageParent);
         } else if (res.needConsolidatePage != NotExistantPID) {
-            consolidatePage(res.needConsolidatePage);
+            consolidatePage(res.needConsolidatePage, threadInfo);
         }
         return returnValue;
     }
@@ -295,13 +295,13 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::insert(Key key, const Data *const record) {
-        EnterEpoque<Key, Data> epoqueGuard(epoque);
+    void Tree<Key, Data>::insert(Key key, const Data *const record, ThreadInfo<Key, Data> &threadInfo) {
+        EpocheGuard<Key, Data> epoqueGuard(threadInfo);
         restartInsert:
         FindDataPageResult<Key, Data> res = findDataPage(key);
         assert(isLeaf(res.startNode));
         if (res.needConsolidatePage == res.pid) {
-            consolidateLeafPage(res.pid, res.startNode);
+            consolidateLeafPage(res.pid, res.startNode, threadInfo);
             goto restartInsert;
         }
         DeltaInsert<Key, Data> *newNode = DeltaInsert<Key, Data>::create(res.startNode, KeyValue<Key, Data>(key, record), (res.dataNode != nullptr));
@@ -313,7 +313,7 @@ namespace BwTree {
             if (res.needSplitPage != NotExistantPID) {
                 splitPage(res.needSplitPage, res.needSplitPageParent);
             } else if (res.needConsolidatePage != NotExistantPID) {
-                consolidatePage(res.needConsolidatePage);
+                consolidatePage(res.needConsolidatePage, threadInfo);
             }
             return;
         }
@@ -321,8 +321,8 @@ namespace BwTree {
 
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::deleteKey(Key key) {
-        EnterEpoque<Key, Data> epoqueGuard(epoque);
+    void Tree<Key, Data>::deleteKey(Key key, ThreadInfo<Key, Data> &threadInfo) {
+        EpocheGuard<Key, Data> epoqueGuard(threadInfo);
         restartDelete:
         FindDataPageResult<Key, Data> res = findDataPage(key);
         if (res.dataNode == nullptr) {
@@ -444,7 +444,8 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::consolidateLeafPage(const PID pid, Node<Key, Data> *startNode) {
+    void Tree<Key, Data>::consolidateLeafPage(const PID pid, Node<Key, Data> *startNode,
+                                              ThreadInfo<Key, Data> &threadInfo) {
         if (DEBUG) std::cout << "consolidate leaf page" << std::endl;
 
         static thread_local std::vector<KeyValue<Key, Data>> recordsStatic;
@@ -463,7 +464,7 @@ namespace BwTree {
             ++failedLeafConsolidate;
         } else {
             ++successfulLeafConsolidate;
-            epoque.markForDeletion(previousNode);
+            epoque.markNodeForDeletion(previousNode, threadInfo);
         }
     }
 
@@ -585,7 +586,8 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    void Tree<Key, Data>::consolidateInnerPage(const PID pid, Node<Key, Data> *startNode) {
+    void Tree<Key, Data>::consolidateInnerPage(const PID pid, Node<Key, Data> *startNode,
+                                               ThreadInfo<Key, Data> &threadInfo) {
         if (DEBUG) std::cout << "consolidate inner page" << std::endl;
 
         static thread_local std::vector<KeyPid<Key, Data>> nodesStatic;
@@ -605,7 +607,7 @@ namespace BwTree {
             ++failedInnerConsolidate;
         } else {
             ++successfulInnerConsolidate;
-            epoque.markForDeletion(previousNode);
+            epoque.markNodeForDeletion(previousNode, threadInfo);
         }
     }
 
@@ -689,8 +691,29 @@ namespace BwTree {
         }
     }
 
-    template class Tree<uint32_t, uint32_t>;
-    template class Tree<uint32_t, uint64_t>;
-    template class Tree<uint64_t, uint64_t>;
-    template class Tree<unsigned long long, unsigned long long>;
+    template<typename Key, typename Data>
+    ThreadInfo<Key, Data> Tree<Key, Data>::getThreadInfo() {
+        return ThreadInfo<Key, Data>(this->epoque);
+    }
 }
+#include "epoche.cpp"
+
+template class BwTree::Tree<uint32_t, uint32_t>;
+template class BwTree::Tree<uint32_t, uint64_t>;
+template class BwTree::Tree<uint64_t, uint64_t>;
+template class BwTree::Tree<unsigned long long, unsigned long long>;
+
+template class BwTree::ThreadInfo<uint32_t, uint32_t>;
+template class BwTree::ThreadInfo<uint32_t, uint64_t>;
+template class BwTree::ThreadInfo<uint64_t, uint64_t>;
+template class BwTree::ThreadInfo<unsigned long long, unsigned long long>;
+
+template class BwTree::DeletionList<uint32_t, uint32_t>;
+template class BwTree::DeletionList<uint32_t, uint64_t>;
+template class BwTree::DeletionList<uint64_t, uint64_t>;
+template class BwTree::DeletionList<unsigned long long, unsigned long long>;
+
+template class BwTree::Epoche<uint32_t, uint32_t>;
+template class BwTree::Epoche<uint32_t, uint64_t>;
+template class BwTree::Epoche<uint64_t, uint64_t>;
+template class BwTree::Epoche<unsigned long long, unsigned long long>;

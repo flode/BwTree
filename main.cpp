@@ -200,13 +200,14 @@ void executeBwTreeCommands(const std::vector<std::vector<BwTreeCommand<Key, Key>
     std::vector<std::thread> threads;
     for (auto &cmds : commands) {
         threads.push_back(std::thread([&tree, &cmds]() {
+            BwTree::ThreadInfo<Key, Key> threadInfo = tree.getThreadInfo();
             for (auto &command : cmds) {
                 switch (command.type) {
                     case BwTreeCommandType::insert:
-                        tree.insert(command.key, command.data);
+                        tree.insert(command.key, command.data, threadInfo);
                         break;
                     case BwTreeCommandType::search:
-                        tree.search(command.key);
+                        tree.search(command.key, threadInfo);
                         break;
                 }
             }
