@@ -8,7 +8,7 @@ else()
     message(STATUS "Build type is set to ${CMAKE_BUILD_TYPE}")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -Werror -pthread -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Werror -Wno-error=overflow")
 
 find_package (Threads)
@@ -17,4 +17,4 @@ add_library(BwTreeLib ${SOURCE_FILES})
 target_link_libraries (BwTreeLib ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(BwTree main.cpp main.hpp)
-target_link_libraries(BwTree BwTreeLib)
+target_link_libraries(BwTree BwTreeLib pthread)
