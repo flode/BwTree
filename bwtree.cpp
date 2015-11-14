@@ -16,11 +16,10 @@ namespace BwTree {
     }
 
     template<typename Key, typename Data>
-    FindDataPageResult<Key, Data>::FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Key const key, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
+    FindDataPageResult<Key, Data>::FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent)
             : pid(pid),
               startNode(startNode),
               dataNode(dataNode),
-              key(key),
               data(data),
               needConsolidatePage(needConsolidatePage),
               needSplitPage(needSplitPage),
@@ -183,7 +182,7 @@ namespace BwTree {
                         auto res = binarySearch<decltype(node1->records)>(node1->records, node1->recordCount, key);
                         if (res < node1->recordCount) {
                             if (node1->records[res].key == key) {
-                                return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key,
+                                return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode,
                                                                      node1->records[res].data,
                                                                      needConsolidatePage, needSplitPage,
                                                                      needSplitPageParent);
@@ -199,7 +198,7 @@ namespace BwTree {
                     case PageType::deltaInsert: {
                         auto node1 = static_cast<DeltaInsert<Key, Data> *>(nextNode);
                         if (node1->record.key == key) {
-                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, key, node1->record.data, needConsolidatePage, needSplitPage, needSplitPageParent);
+                            return FindDataPageResult<Key, Data>(nextPID, startNode, nextNode, node1->record.data, needConsolidatePage, needSplitPage, needSplitPageParent);
                         }
                         deltaNodeCount++;
                         nextNode = node1->origin;

@@ -11,7 +11,7 @@ using namespace BwTree;
 
 template<typename Key>
 void testBwTreeNew(const std::size_t count) {
-    auto settings = BwTree::Settings("8,8,3,3", 8, {{8}}, 3, {{3}});
+    auto settings = BwTree::Settings("8,8,3,3", 8, {8}, 3, {3});
     Tree<Key, Key> tree(settings);
     std::vector<Key> values(count);
     for (std::size_t i = 0; i < count; ++i) {
@@ -71,55 +71,55 @@ void testBwTree() {
 
 
             std::vector<BwTree::Settings> settingsList{{
-/*                    BwTree::Settings("single", 200, {{100}}, 5, {{5}}),
-                    BwTree::Settings("single", 200, {{100}}, 7, {{6}}),
-                    BwTree::Settings("single", 200, {{100}}, 7, {{5,6}}),
-                    BwTree::Settings("single", 200, {{100}}, 7, {{4,5,6}}),
-                    BwTree::Settings("single", 200, {{100}}, 7, {{5,6,7}}),
+/*                    BwTree::Settings("single", 200, {100}, 5, {5}),
+                    BwTree::Settings("single", 200, {100}, 7, {6}),
+                    BwTree::Settings("single", 200, {100}, 7, {5,6}),
+                    BwTree::Settings("single", 200, {100}, 7, {4,5,6}),
+                    BwTree::Settings("single", 200, {100}, 7, {5,6,7}),
 
-                    BwTree::Settings("single", 200, {{100}}, 5, {{7}}),*/
-/*                    BwTree::Settings("200, 100, 4", 200, {{100}}, 4, {{4}}),
-                    BwTree::Settings("200, 100, 5", 200, {{100}}, 5, {{5}}),
-                    BwTree::Settings("200, 100, 6", 200, {{100}}, 6, {{6}}),
-                    BwTree::Settings("200, 100, 7", 200, {{100}}, 7, {{7}}),
-                    BwTree::Settings("200, 100, 8", 200, {{100}}, 8, {{8}}),
+                    BwTree::Settings("single", 200, {100}, 5, {7}),*/
+/*                    BwTree::Settings("200, 100, 4", 200, {100}, 4, {4}),
+                    BwTree::Settings("200, 100, 5", 200, {100}, 5, {5}),
+                    BwTree::Settings("200, 100, 6", 200, {100}, 6, {6}),
+                    BwTree::Settings("200, 100, 7", 200, {100}, 7, {7}),
+                    BwTree::Settings("200, 100, 8", 200, {100}, 8, {8}),
 
 
-                    BwTree::Settings("50, 100, 7", 50, {{100}}, 7, {{7}}),
-                    BwTree::Settings("100, 100, 7", 100, {{100}}, 7, {{7}}),
-                    BwTree::Settings("200, 100, 7", 200, {{100}}, 7, {{7}}),
-                    BwTree::Settings("300, 100, 7", 300, {{100}}, 7, {{7}}),
-                    BwTree::Settings("400, 100, 7", 400, {{100}}, 7, {{7}}),
+                    BwTree::Settings("50, 100, 7", 50, {100}, 7, {7}),
+                    BwTree::Settings("100, 100, 7", 100, {100}, 7, {7}),
+                    BwTree::Settings("200, 100, 7", 200, {100}, 7, {7}),
+                    BwTree::Settings("300, 100, 7", 300, {100}, 7, {7}),
+                    BwTree::Settings("400, 100, 7", 400, {100}, 7, {7}),
 
-                    BwTree::Settings("50, 200, 7", 50, {{200}}, 7, {{7}}),
-                    BwTree::Settings("100, 200, 7", 100, {{200}}, 7, {{7}}),
-                    BwTree::Settings("200, 200, 7", 200, {{200}}, 7, {{7}}),
-                    BwTree::Settings("300, 200, 7", 300, {{200}}, 7, {{7}}),
-                    BwTree::Settings("400, 200, 7", 400, {{200}}, 7, {{7}}),
+                    BwTree::Settings("50, 200, 7", 50, {200}, 7, {7}),
+                    BwTree::Settings("100, 200, 7", 100, {200}, 7, {7}),
+                    BwTree::Settings("200, 200, 7", 200, {200}, 7, {7}),
+                    BwTree::Settings("300, 200, 7", 300, {200}, 7, {7}),
+                    BwTree::Settings("400, 200, 7", 400, {200}, 7, {7}),
 		    */
-/*                    BwTree::Settings("400, 200, 7, 7", 400, {{200}}, 7, {{7}}),
-                    BwTree::Settings("800, 200, 7, 7", 800, {{200}}, 7, {{7}}),
-                    BwTree::Settings("8000, 200, 7, 7", 8000, {{200}}, 7, {{7}}),*/
+/*                    BwTree::Settings("400, 200, 7, 7", 400, {200}, 7, {7}),
+                    BwTree::Settings("800, 200, 7, 7", 800, {200}, 7, {7}),
+                    BwTree::Settings("8000, 200, 7, 7", 8000, {200}, 7, {7}),*/
 
 
-                    BwTree::Settings("400, 200, 7, 7", 400, {{200}}, 7, {{7}}),
-                    BwTree::Settings("400, 400, 7, 7", 400, {{400}}, 7, {{7}}),
-                    BwTree::Settings("400, 4000, 7, 7", 400, {{4000}}, 7, {{7}}),
+                    BwTree::Settings("400, 200, 7, 7", 400, {200}, 7, {7}),
+                    BwTree::Settings("400, 400, 7, 7", 400, {400}, 7, {7}),
+                    BwTree::Settings("400, 4000, 7, 7", 400, {4000}, 7, {7}),
 
-                    BwTree::Settings("400, 200, 7, 27", 400, {{200}}, 7, {{2, 7}}),
-                    BwTree::Settings("400, 200, 7, 37", 400, {{200}}, 7, {{3, 7}}),
-                    BwTree::Settings("400, 200, 7, 347", 400, {{200}}, 7, {{3, 4, 7}}),
+                    BwTree::Settings("400, 200, 7, 27", 400, {200}, 7, {2, 7}),
+                    BwTree::Settings("400, 200, 7, 37", 400, {200}, 7, {3, 7}),
+                    BwTree::Settings("400, 200, 7, 347", 400, {200}, 7, {3, 4, 7}),
 
-                    BwTree::Settings("400, 200, 2, 7", 400, {{200}}, 7, {{7}}),
-                    BwTree::Settings("400, 200, 7, 7", 400, {{200}}, 7, {{7}}),
-                    BwTree::Settings("400, 200, 14, 7", 400, {{200}}, 7, {{7}}),
+                    BwTree::Settings("400, 200, 2, 7", 400, {200}, 7, {7}),
+                    BwTree::Settings("400, 200, 7, 7", 400, {200}, 7, {7}),
+                    BwTree::Settings("400, 200, 14, 7", 400, {200}, 7, {7}),
 
-                    //BwTree::Settings("single", 200, {{100}}, 8, {{8}}),
+                    //BwTree::Settings("single", 200, {100}, 8, {8}),
 
 
 
-                    //BwTree::Settings("multiple consolidate", 200, {{100}}, 5, {{2, 3, 4}}),
-                    //BwTree::Settings("multiple split and consolidate", 200, {{50, 100, 200}}, 5, {{2, 3, 4}})
+                    //BwTree::Settings("multiple consolidate", 200, {100}, 5, {2, 3, 4}),
+                    //BwTree::Settings("multiple split and consolidate", 200, {50, 100, 200}, 5, {2, 3, 4})
             }};
 
             for (auto &settings : settingsList) {

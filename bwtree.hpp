@@ -20,7 +20,6 @@ namespace BwTree {
         const PID pid;
         Node<Key, Data> *startNode;
         const Node<Key, Data> *const dataNode;
-        const Key key = NotExistantPID;
         const Data *const data = nullptr;
         const PID needConsolidatePage;
         const PID needSplitPage;
@@ -29,7 +28,7 @@ namespace BwTree {
 
         FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent);
 
-        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Key const key, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent);
+        FindDataPageResult(PID const pid, Node<Key, Data> *startNode, Node<Key, Data> const *dataNode, Data const *data, PID const needConsolidatePage, PID const needSplitPage, PID const needSplitPageParent);
     };
 
 

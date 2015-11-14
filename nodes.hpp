@@ -59,8 +59,8 @@ namespace BwTree {
         KeyValue<Key, Data> records[];
 
         static Leaf<Key, Data> *create(std::size_t size, const PID &prev, const PID &next) {
-            size_t s = sizeof(Leaf<Key, Data>) - sizeof(Leaf<Key, Data>::records);
-            Leaf<Key, Data> *output = (Leaf<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, const Data *>));
+            size_t s = sizeof(Leaf<Key, Data>) + size * sizeof(std::tuple<Key, const Data *>);
+            Leaf<Key, Data> *output = (Leaf<Key, Data> *) operator new(s);
             output->recordCount = size;
             output->type = PageType::leaf;
             output->next = next;
@@ -89,8 +89,8 @@ namespace BwTree {
         KeyPid<Key, Data> nodes[];
 
         static InnerNode<Key, Data> *create(std::size_t size, const PID &prev, const PID &next) {
-            size_t s = sizeof(InnerNode<Key, Data>) - sizeof(InnerNode<Key, Data>::nodes);
-            InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) operator new(s + size * sizeof(std::tuple<Key, PID>));
+            size_t s = sizeof(InnerNode<Key, Data>) + size * sizeof(std::tuple<Key, PID>);
+            InnerNode<Key, Data> *output = (InnerNode<Key, Data> *) operator new(s);
             output->nodeCount = size;
             output->type = PageType::inner;
             output->next = next;
