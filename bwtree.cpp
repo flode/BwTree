@@ -120,7 +120,9 @@ namespace BwTree {
                             needSplitPageParent = parent;
                         }
                         auto res = binarySearch<decltype(node1->nodes)>(node1->nodes, node1->nodeCount, key);
-                        if (res == node1->nodeCount && node1->next != NotExistantPID) {
+                        if (res == node1->nodeCount) {
+                            assert(node1->next != NotExistantPID);
+
                             doNotSplit = true;
                             nextPID = node1->next;
                         } else {
@@ -630,7 +632,7 @@ namespace BwTree {
                             nodes.push_back(node1->nodes[i]);
                         }
                     }
-                    if (!pageSplit && node1->nodes[node1->nodeCount - 1].key == NotExistantPID) {
+                    if (!pageSplit && node1->next == NotExistantPID) {
                         hadInfinityElement = true;
                     }
                     prev = node1->prev;
