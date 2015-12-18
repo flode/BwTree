@@ -76,20 +76,21 @@ namespace BwTree {
     template<typename Key, typename Data>
     void Epoche<Key, Data>::markNodeForDeletion(Node<Key, Data> *n, ThreadInfo<Key, Data> &epocheInfo) {
         epocheInfo.getDeletionList().add(n);
-        thresholdCounter++;
+        epocheInfo.getDeletionList().thresholdCounter++;
     }
 
     template<typename Key, typename Data>
     void Epoche<Key, Data>::exitEpocheAndCleanup(ThreadInfo<Key, Data> &epocheInfo) {
-        if ((thresholdCounter & (64 - 1)) == 1) {
+        auto &deletionList = epocheInfo.getDeletionList();
+        if ((deletionList.thresholdCounter & (64 - 1)) == 0) {
             currentEpoche.fetch_add(1);
         }
-        if (thresholdCounter > startGCThreshhold) {
-            if (epocheInfo.getDeletionList().size() == 0) {
-                thresholdCounter = 0;
+        if (deletionList.thresholdCounter > startGCThreshhold) {
+            if (deletionList.size() == 0) {
+                deletionList.thresholdCounter = 1;
                 return;
             }
-            epocheInfo.getDeletionList().localEpoche.store(std::numeric_limits<uint64_t>::max());
+            deletionList.localEpoche.store(std::numeric_limits<uint64_t>::max());
 
             uint64_t oldestEpoche = std::numeric_limits<uint64_t>::max();
             for (auto &epoche : deletionLists) {
@@ -99,7 +100,7 @@ namespace BwTree {
                 }
             }
 
-            LabelDelete<Key, Data> *cur = epocheInfo.getDeletionList().head(), *next, *prev = nullptr;
+            LabelDelete<Key, Data> *cur = deletionList.head(), *next, *prev = nullptr;
             while (cur != nullptr) {
                 next = cur->next;
 
@@ -107,13 +108,13 @@ namespace BwTree {
                     for (std::size_t i = 0; i < cur->nodesCount; ++i) {
                         freeNodeRecursively(cur->nodes[i]);
                     }
-                    epocheInfo.getDeletionList().remove(cur, prev);
+                    deletionList.remove(cur, prev);
                 } else {
                     prev = cur;
                 }
                 cur = next;
             }
-            thresholdCounter = 0;
+            deletionList.thresholdCounter = 1;
         }
     }
 

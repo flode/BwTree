@@ -25,6 +25,7 @@ namespace BwTree {
 
     public:
         std::atomic<uint64_t> localEpoche;
+        size_t thresholdCounter{1};
 
         ~DeletionList();
         LabelDelete<Key, Data> *head();
@@ -69,10 +70,8 @@ namespace BwTree {
 
         size_t startGCThreshhold;
 
-        size_t thresholdCounter;
-
     public:
-        Epoche(size_t startGCThreshhold) : startGCThreshhold(startGCThreshhold), thresholdCounter(0) { }
+        Epoche(size_t startGCThreshhold) : startGCThreshhold(startGCThreshhold) { }
 
         ~Epoche();
 
