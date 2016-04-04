@@ -27,6 +27,10 @@ By executing with tcmalloc performance can be improved.
 - The mapping table cannot grow dynamically
 - Necessary operations like consolidate or split are not executed asynchronously
 
+## Troubleshooting
+- Error compiling: "error: invalid value 'c++14' in '-std=c++14'"
+
+You need a compiler that supports C++14 in order to compile the project.
 
 ## License
 Copyright 2014-2015 Florian Scheibner
